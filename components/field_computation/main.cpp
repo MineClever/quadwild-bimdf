@@ -40,6 +40,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include<vcg/complex/algorithms/hole.h>
 #include <cstdio>
 #include <clocale>
+#include <fstream>
+#include <nlohmann/json.hpp>
 //#include <locale>
 
 
@@ -131,44 +133,53 @@ void correctOrAbort(const bool ok, const std::string & line, const int linenumbe
 
 bool loadConfigFile(const std::string & filename)
 {
-
-    FILE *f=fopen(filename.c_str(),"rt");
-
-    if (f==NULL)return false;
+    std::ifstream stream(filename.c_str());
+    if (!stream.is_open()) {
+        return false;
+    }
+    nlohmann::json json;
+    stream >> json;
 
     std::cout<<"READ CONFIG FILE"<<std::endl;
 
-    int IntVar;
-    fscanf(f,"do_remesh %d\n",&IntVar);
-    if (IntVar==0)
-        do_remesh=false;
+    if (json.contains("do_remesh")) {
+        if (json["do_remesh"].is_boolean()) {
+            do_remesh = json["do_remesh"].get<bool>();
+        } else {
+            do_remesh = json["do_remesh"].get<int>() != 0;
+        }
+    }
     std::cout<<"do_remesh "<<do_remesh<<std::endl;
 
-    fscanf(f,"remesh_iterations %d\n",&remesher_iterations);
+    if (json.contains("remesh_iterations")) {
+        remesher_iterations = json["remesh_iterations"].get<int>();
+    }
     std::cout<<"remesh_iterations "<<remesher_iterations<<std::endl;
 
-    float remesher_aspect_ratiof;
-    fscanf(f,"remesh_target_aspect_ratio %f\n",&remesher_aspect_ratiof);
-    remesher_aspect_ratio=remesher_aspect_ratiof;
+    if (json.contains("remesh_target_aspect_ratio")) {
+        remesher_aspect_ratio = json["remesh_target_aspect_ratio"].get<double>();
+    }
     std::cout<<"remesher_aspect_ratio "<<remesher_aspect_ratio<<std::endl;
 
-    fscanf(f,"remesh_termination_delta %d\n",&remesher_termination_delta);
+    if (json.contains("remesh_termination_delta")) {
+        remesher_termination_delta = json["remesh_termination_delta"].get<int>();
+    }
     std::cout<<"remesh_termination_delta "<<remesher_termination_delta<<std::endl;
 
-    float sharp_feature_thrf;
-    fscanf(f,"sharp_feature_thr %f\n",&sharp_feature_thrf);
-    sharp_feature_thr=sharp_feature_thrf;
+    if (json.contains("sharp_feature_thr")) {
+        sharp_feature_thr = json["sharp_feature_thr"].get<double>();
+    }
     std::cout<<"sharp_feature_thr "<<sharp_feature_thr<<std::endl;
 
-    fscanf(f,"sharp_feature_erode_dilate %d\n",&feature_erode_dilate);
+    if (json.contains("sharp_feature_erode_dilate")) {
+        feature_erode_dilate = json["sharp_feature_erode_dilate"].get<int>();
+    }
     std::cout<<"sharp_feature_erode_dilate "<<feature_erode_dilate<<std::endl;
 
-    float alphaf;
-    fscanf(f,"alpha %f\n",&alphaf);
-    alpha=(double)alphaf;
+    if (json.contains("alpha")) {
+        alpha = json["alpha"].get<double>();
+    }
     std::cout<<"alpha "<<alpha<<std::endl;
-
-    fclose(f);
 
     std::cout << "[fieldComputation] Successful config import" << std::endl;
 
@@ -201,7 +212,7 @@ int main(int argc, char *argv[])
 
     //load default config
 
-    loadConfigFile("basic_setup.txt");
+    loadConfigFile("basic_setup.json");
     assert(argc>1);
     pathM=std::string(argv[1]);
     for (size_t i=2;i<argc;i++)
@@ -227,14 +238,14 @@ int main(int argc, char *argv[])
             has_features_fl=true;
             continue;
         }
-        position=pathTest.find(".txt");
+        position=pathTest.find(".json");
         if (position!=-1)
         {
            loadConfigFile(pathTest.c_str());
            continue;
         }
     }
-    //    loadConfigFile("basic_setup.txt");
+    //    loadConfigFile("basic_setup.json");
 
     //    std::cout << pathM << std::endl;
 

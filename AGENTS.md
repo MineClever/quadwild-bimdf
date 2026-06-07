@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`quadwild/` contains the main CLI entry points, including `quadwild` and `cli_trace`. `components/quad_from_patches/` builds the second main executable, while `components/viz_mesh_results/` contains visualization tooling. Core Bi-MDF and quad retopology logic lives in `libs/quadretopology/quadretopology/`, especially `qr_flow.cpp`. Runtime configs are under `config/prep_config/`, `config/main_config/`, and `config/satsuma/`. Build logic starts at the root [CMakeLists.txt](/D:/_Code_Here/Git/quadwild-bimdf/CMakeLists.txt).
+`quadwild/` contains the main CLI entry points, including `quadwild` and `cli_trace`. `components/quad_from_patches/` builds the second main executable, while `components/viz_mesh_results/` contains visualization tooling. Core Bi-MDF and quad retopology logic lives in `libs/quadretopology/quadretopology/`, especially `qr_flow.cpp`. Runtime configs are JSON files under `quadwild/`, `config/prep_config/`, `config/main_config/`, and `config/satsuma/`. Build logic starts at the root [CMakeLists.txt](/D:/_Code_Here/Git/quadwild-bimdf/CMakeLists.txt).
 
 ## Build, Test, and Development Commands
 Configure and build locally with:
@@ -14,8 +14,8 @@ cmake --build build
 Run the main pipeline with:
 
 ```sh
-./build/Build/bin/quadwild path/to/mesh.obj 2 config/prep_config/basic_setup.txt
-./build/Build/bin/quad_from_patches path/to/mesh_rem_p0.obj 123 config/main_config/flow_noalign_lemon.txt
+./build/Build/bin/quadwild path/to/mesh.obj 2 config/prep_config/basic_setup.json
+./build/Build/bin/quad_from_patches path/to/mesh_rem_p0.obj 123 config/main_config/flow_noalign_lemon.json
 ```
 
 For a release-style Linux or macOS build, follow the CI pattern and add `-GNinja -DCMAKE_BUILD_TYPE=Release`. On Windows, CI uses `cmake . -B build -T "ClangCl"`.

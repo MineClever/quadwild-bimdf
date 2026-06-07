@@ -1,6 +1,72 @@
 #include "functions.h"
 #include "trace.h"
 
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+namespace {
+
+using Json = nlohmann::json;
+
+bool json_bool(const Json& value)
+{
+    if (value.is_boolean()) {
+        return value.get<bool>();
+    }
+    if (value.is_number_integer() || value.is_number_unsigned()) {
+        return value.get<int>() != 0;
+    }
+    if (value.is_number_float()) {
+        return value.get<double>() != 0.0;
+    }
+    throw std::runtime_error("expected boolean-compatible JSON value");
+}
+
+std::vector<float> json_float_array(const Json& array)
+{
+    if (!array.is_array()) {
+        throw std::runtime_error("expected JSON array");
+    }
+    std::vector<float> result;
+    result.reserve(array.size());
+    for (size_t i = 0; i < array.size(); ++i) {
+        result.push_back(array.at(i).get<float>());
+    }
+    return result;
+}
+
+template <typename T>
+void assign_if_present(const Json& json, const char* key, T& target)
+{
+    if (json.contains(key)) {
+        target = json.at(key).get<T>();
+    }
+}
+
+void assign_bool_if_present(const Json& json, const char* key, bool& target)
+{
+    if (json.contains(key)) {
+        target = json_bool(json.at(key));
+    }
+}
+
+Json load_json_file(const std::string& filename)
+{
+    std::ifstream file(filename.c_str());
+    if (!file.is_open()) {
+        throw std::runtime_error(std::string("Failed to open config file ") + filename);
+    }
+
+    Json json;
+    file >> json;
+    if (!json.is_object()) {
+        throw std::runtime_error(std::string("Config root must be a JSON object: ") + filename);
+    }
+    return json;
+}
+
+}
+
 inline void remeshAndField(
         FieldTriMesh& trimesh,
         const Parameters& parameters,
@@ -98,72 +164,16 @@ inline void quadrangulate(
     std::cout<<"Loaded "<<trimeshFeaturesC.size()<<" corner features"<<std::endl;
     loadFeatureCorners(featureCFilename);
 
-    std::cout<<"Alpha: "<<parameters.alpha<<std::endl;
+    std::cout<<"Alpha: "<<parameters.quadrangulationParameters.alpha<<std::endl;
 
     OrientIfNeeded(trimeshToQuadrangulate,trimeshPartitions,trimeshCorners,trimeshFeatures,trimeshFeaturesC);
 
     //COMPUTE QUADRANGULATION
     QuadRetopology::internal::updateAllMeshAttributes(trimeshToQuadrangulate);
 
-    QuadRetopology::Parameters qParameters;
-    float scaleFactor;
-    int fixedChartClusters;
-
-    qParameters.alpha=parameters.alpha;
-    qParameters.ilpMethod=QuadRetopology::ILPMethod::LEASTSQUARES;
-    qParameters.timeLimit=200;
-    qParameters.gapLimit=0.0;
-    qParameters.callbackTimeLimit.push_back(3.0);
-    qParameters.callbackTimeLimit.push_back(5.0);
-    qParameters.callbackTimeLimit.push_back(10.0);
-    qParameters.callbackTimeLimit.push_back(20.0);
-    qParameters.callbackTimeLimit.push_back(30.0);
-    qParameters.callbackTimeLimit.push_back(60.0);
-    qParameters.callbackTimeLimit.push_back(90.0);
-    qParameters.callbackTimeLimit.push_back(120.0);
-
-    qParameters.callbackGapLimit.push_back(0.005);
-    qParameters.callbackGapLimit.push_back(0.02);
-    qParameters.callbackGapLimit.push_back(0.05);
-    qParameters.callbackGapLimit.push_back(0.1);
-    qParameters.callbackGapLimit.push_back(0.15);
-    qParameters.callbackGapLimit.push_back(0.20);
-    qParameters.callbackGapLimit.push_back(0.25);
-    qParameters.callbackGapLimit.push_back(0.3);
-
-    qParameters.minimumGap=0.4;
-
-    qParameters.isometry=true;
-
-    qParameters.regularityQuadrilaterals=true;
-
-    qParameters.regularityNonQuadrilaterals=true;
-
-    qParameters.regularityNonQuadrilateralsWeight=0.9;
-
-    qParameters.alignSingularities=true;
-
-    qParameters.alignSingularitiesWeight=0.1;
-
-    qParameters.repeatLosingConstraintsIterations=true;
-
-    qParameters.repeatLosingConstraintsQuads=false;
-
-    qParameters.repeatLosingConstraintsNonQuads=false;
-
-    qParameters.repeatLosingConstraintsAlign=true;
-
-    qParameters.hardParityConstraint=true;
-
-    scaleFactor=parameters.scaleFact;
-
-    fixedChartClusters=300; //  TODO: load from parameter struct / file
-    fixedChartClusters=0;
-
-    qParameters.chartSmoothingIterations = 0; //Chart smoothing
-    qParameters.quadrangulationFixedSmoothingIterations = 0; //Smoothing with fixed borders of the patches
-    qParameters.quadrangulationNonFixedSmoothingIterations = 0; //Smoothing with fixed borders of the quadrangulation
-    qParameters.feasibilityFix = false;
+    QuadRetopology::Parameters qParameters = parameters.quadrangulationParameters;
+    const float scaleFactor = parameters.scaleFact;
+    const int fixedChartClusters = parameters.fixedChartClusters;
 
     double edgeSize=avgEdge(trimeshToQuadrangulate)*scaleFactor;
     std::cout<<"Edge size: "<<edgeSize<<std::endl;
@@ -226,30 +236,49 @@ inline typename TriangleMesh::ScalarType avgEdge(const TriangleMesh& trimesh)
 
 inline bool loadConfigFile(const std::string& filename, Parameters& parameters)
 {
-    FILE *f=fopen(filename.c_str(),"rt");
+    std::cout<<"READ CONFIG FILE"<<std::endl;
+    const Json json = load_json_file(filename);
 
-    if (f==NULL) {
-        throw std::runtime_error(std::string("Failed to open config file ") + filename);
+    assign_bool_if_present(json, "do_remesh", parameters.remesh);
+    assign_if_present(json, "sharp_feature_thr", parameters.sharpAngle);
+    assign_if_present(json, "alpha", parameters.quadrangulationParameters.alpha);
+    assign_if_present(json, "scaleFact", parameters.scaleFact);
+    assign_if_present(json, "fixedChartClusters", parameters.fixedChartClusters);
+
+    if (json.contains("ilpMethod")) {
+        const int value = json.at("ilpMethod").get<int>();
+        parameters.quadrangulationParameters.ilpMethod =
+            (value == 0) ? QuadRetopology::ILPMethod::ABS : QuadRetopology::ILPMethod::LEASTSQUARES;
     }
 
-    std::cout<<"READ CONFIG FILE"<<std::endl;
-
-    int IntVar;
-    fscanf(f,"do_remesh %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.remesh=false;
-    else
-        parameters.remesh=true;
-
-    fscanf(f,"sharp_feature_thr %f\n",&parameters.sharpAngle);
-
-    fscanf(f,"alpha %f\n",&parameters.alpha);
-
-    fscanf(f,"scaleFact %f\n",&parameters.scaleFact);
-
-    fclose(f);
+    assign_if_present(json, "timeLimit", parameters.quadrangulationParameters.timeLimit);
+    assign_if_present(json, "gapLimit", parameters.quadrangulationParameters.gapLimit);
+    if (json.contains("callbackTimeLimit")) {
+        parameters.quadrangulationParameters.callbackTimeLimit = json_float_array(json.at("callbackTimeLimit"));
+    }
+    if (json.contains("callbackGapLimit")) {
+        parameters.quadrangulationParameters.callbackGapLimit = json_float_array(json.at("callbackGapLimit"));
+    }
+    assign_if_present(json, "minimumGap", parameters.quadrangulationParameters.minimumGap);
+    assign_bool_if_present(json, "isometry", parameters.quadrangulationParameters.isometry);
+    assign_bool_if_present(json, "regularityQuadrilaterals", parameters.quadrangulationParameters.regularityQuadrilaterals);
+    assign_bool_if_present(json, "regularityNonQuadrilaterals", parameters.quadrangulationParameters.regularityNonQuadrilaterals);
+    assign_if_present(json, "regularityNonQuadrilateralsWeight", parameters.quadrangulationParameters.regularityNonQuadrilateralsWeight);
+    assign_bool_if_present(json, "alignSingularities", parameters.quadrangulationParameters.alignSingularities);
+    assign_if_present(json, "alignSingularitiesWeight", parameters.quadrangulationParameters.alignSingularitiesWeight);
+    assign_bool_if_present(json, "repeatLosingConstraintsIterations", parameters.quadrangulationParameters.repeatLosingConstraintsIterations);
+    assign_bool_if_present(json, "repeatLosingConstraintsQuads", parameters.quadrangulationParameters.repeatLosingConstraintsQuads);
+    assign_bool_if_present(json, "repeatLosingConstraintsNonQuads", parameters.quadrangulationParameters.repeatLosingConstraintsNonQuads);
+    assign_bool_if_present(json, "repeatLosingConstraintsAlign", parameters.quadrangulationParameters.repeatLosingConstraintsAlign);
+    assign_bool_if_present(json, "hardParityConstraint", parameters.quadrangulationParameters.hardParityConstraint);
+    assign_if_present(json, "chartSmoothingIterations", parameters.quadrangulationParameters.chartSmoothingIterations);
+    assign_if_present(json, "quadrangulationFixedSmoothingIterations", parameters.quadrangulationParameters.quadrangulationFixedSmoothingIterations);
+    assign_if_present(json, "quadrangulationNonFixedSmoothingIterations", parameters.quadrangulationParameters.quadrangulationNonFixedSmoothingIterations);
+    assign_bool_if_present(json, "feasibilityFix", parameters.quadrangulationParameters.feasibilityFix);
+    assign_if_present(json, "useFlowSolver", parameters.quadrangulationParameters.useFlowSolver);
+    assign_if_present(json, "flow_config_filename", parameters.quadrangulationParameters.flow_config_filename);
+    assign_if_present(json, "satsuma_config_filename", parameters.quadrangulationParameters.satsuma_config_filename);
 
     std::cout << "Successful config import" << std::endl;
-
     return true;
 }

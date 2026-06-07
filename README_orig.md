@@ -85,13 +85,13 @@ The package is composed of the main command-line quad-remesher (quadwild) and th
 #### quadwild
 This project has no visual interface and can be used via command-line. This can be helpful to batch run entire datasets of models. To run the project, once builded, execute the following terminal command:
 ```
-./quadwild <mesh> [.txt setup file] [.rosy file] [.sharp file]
+./quadwild <mesh> [.json setup file] [.rosy file] [.sharp file]
 ```
 The command takes as input a mesh and three optional configuration files:
 
 - **`<mesh>`**: filename of the input triangle mesh. **The mesh can be either an obj or a ply.**
    
-- **`.txt setup file` (optional):** The txt setup file contains the parameters in the pipeline. By default, the executable loads the file basic_setup.txt and two other examples are included: basic_setup_mechanical.txt and basic_setup_organic.txt. Any setup parameter can be specified to control the output result. The setup file has the following fields:
+- **`.json setup file` (optional):** The JSON setup file contains the parameters in the pipeline. By default, the executable loads the file `basic_setup.json` and two other examples are included: `basic_setup_mechanical.json` and `basic_setup_organic.json`. Any setup parameter can be specified to control the output result. The setup file has the following fields:
 ```
 do_remesh 1 		  //remesh (1) or not (0) the input mesh
 sharp_feature_thr 35      //the dihedral angle of sharp features (-1 no features)
@@ -130,27 +130,27 @@ The output of quadwild consists of several files:
 #### field_computation. 
 The program can be used either with a GUI or by command line (useful to batch run entire datasets of models).
 ```
-./field_computation <mesh> [.txt setup file] [.rosy file][.sharp file] [batch]
+./field_computation <mesh> [.json setup file] [.rosy file][.sharp file] [batch]
 ```
-The "batch" option makes the program run in the shell without the GUI. The setup file includes additional parameters. By default, the executable loads the file basic_setup.txt.
+The "batch" option makes the program run in the shell without the GUI. The setup file includes additional parameters. By default, the executable loads the file `basic_setup.json`.
 
 ---
 
 #### field_tracing
 This program is used to trace fields and split the mesh into patches.
 ```
-./field_tracing <mesh> [.txt setup file] [batch]
+./field_tracing <mesh> [.json setup file] [batch]
 ```
-It requires having a .rosy and a .sharp file (with the same name of the mesh file). The "batch" option makes the program run in the shell without the GUI. The setup file includes additional parameters. By default, the executable loads the file basic_setup.txt.
+It requires having a .rosy and a .sharp file (with the same name of the mesh file). The "batch" option makes the program run in the shell without the GUI. The setup file includes additional parameters. By default, the executable loads the file `basic_setup.json`.
 
 ---
 
 #### quad_from_patches
 This program is used to obtain a quadrangulation from a patch decomposition.
 ```
-./quad_from_patches <mesh> [.txt setup file]
+./quad_from_patches <mesh> [.json setup file]
 ```
-It requires to have in the same folder a .corners, .c_feature, .feature files (with the same name of the mesh file). The setup file includes additional parameters. By default, the executable loads the file basic_setup.txt.
+It requires to have in the same folder a .corners, .c_feature, .feature files (with the same name of the mesh file). The setup file includes additional parameters. By default, the executable loads the file `basic_setup.json`.
 
 ## Note
 The code has slightly changed and the results could be different from the ones showed in the paper.

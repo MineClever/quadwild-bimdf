@@ -16,18 +16,43 @@ struct Parameters {
     Parameters() :
         remesh(true),
         sharpAngle(35),
-        alpha(0.02),
         scaleFact(1),
+        fixedChartClusters(0),
         hasFeature(false),
         hasField(false)
     {
-
+        quadrangulationParameters.alpha = 0.02;
+        quadrangulationParameters.ilpMethod = QuadRetopology::ILPMethod::LEASTSQUARES;
+        quadrangulationParameters.timeLimit = 200;
+        quadrangulationParameters.gapLimit = 0.0;
+        quadrangulationParameters.callbackTimeLimit = {3.0, 5.0, 10.0, 20.0, 30.0, 60.0, 90.0, 120.0};
+        quadrangulationParameters.callbackGapLimit = {0.005, 0.02, 0.05, 0.1, 0.15, 0.20, 0.25, 0.3};
+        quadrangulationParameters.minimumGap = 0.4;
+        quadrangulationParameters.isometry = true;
+        quadrangulationParameters.regularityQuadrilaterals = true;
+        quadrangulationParameters.regularityNonQuadrilaterals = true;
+        quadrangulationParameters.regularityNonQuadrilateralsWeight = 0.9;
+        quadrangulationParameters.alignSingularities = true;
+        quadrangulationParameters.alignSingularitiesWeight = 0.1;
+        quadrangulationParameters.repeatLosingConstraintsIterations = true;
+        quadrangulationParameters.repeatLosingConstraintsQuads = false;
+        quadrangulationParameters.repeatLosingConstraintsNonQuads = false;
+        quadrangulationParameters.repeatLosingConstraintsAlign = true;
+        quadrangulationParameters.hardParityConstraint = true;
+        quadrangulationParameters.chartSmoothingIterations = 0;
+        quadrangulationParameters.quadrangulationFixedSmoothingIterations = 0;
+        quadrangulationParameters.quadrangulationNonFixedSmoothingIterations = 0;
+        quadrangulationParameters.feasibilityFix = false;
+        quadrangulationParameters.useFlowSolver = 1;
+        quadrangulationParameters.flow_config_filename = "config/main_config/flow_virtual_simple.json";
+        quadrangulationParameters.satsuma_config_filename = "config/satsuma/lemon.json";
     }
 
     bool remesh;
     float sharpAngle;
-    float alpha;
     float scaleFact;
+    int fixedChartClusters;
+    QuadRetopology::Parameters quadrangulationParameters;
     bool hasFeature;
     bool hasField;
 };

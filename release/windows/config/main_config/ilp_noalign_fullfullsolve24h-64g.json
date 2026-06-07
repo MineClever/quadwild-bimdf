@@ -1,0 +1,23 @@
+{
+    "alpha": 0.005,
+    "ilpMethod": 1,
+    "timeLimit": 86400.0,
+    "gapLimit": 1.1e-09,
+    "callbackTimeLimit": [],
+    "callbackGapLimit": [],
+    "minimumGap": 100.0,
+    "isometry": true,
+    "regularityQuadrilaterals": true,
+    "regularityNonQuadrilaterals": true,
+    "regularityNonQuadrilateralsWeight": 0.9,
+    "alignSingularities": false,
+    "alignSingularitiesWeight": 0.1,
+    "repeatLosingConstraintsIterations": true,
+    "repeatLosingConstraintsQuads": false,
+    "repeatLosingConstraintsNonQuads": false,
+    "repeatLosingConstraintsAlign": false,
+    "hardParityConstraint": true,
+    "scaleFact": 1.0,
+    "fixedChartClusters": 0,
+    "useFlowSolver": 0
+}

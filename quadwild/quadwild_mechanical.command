@@ -18,5 +18,5 @@ for i in $1/*.obj; do
 
     new_filename="${dir_name}""${only_file_name}"
 
-    ./quadwild  "${new_filename}" basic_setup_mechanical.txt
+    ./quadwild  "${new_filename}" basic_setup_mechanical.json
 done

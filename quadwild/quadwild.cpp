@@ -62,7 +62,7 @@ int actual_main(int argc, char* argv[])
         std::cerr << "usage: " << argv[0]
                   << " <mesh.{obj,ply}>"
                      " [1|2|3]"
-                     " [*.sharp|*.rosy|*.txt]....\n"
+                     " [*.sharp|*.rosy|*.json]....\n"
                      " The 1|2|3 parameter determines after which step to stop:\n"
                      "   1: Remesh and field\n"
                      "   2: Tracing\n"
@@ -96,7 +96,7 @@ int actual_main(int argc, char* argv[])
 
     std::cout<<"Reading input..."<<std::endl;
 
-    std::string configFile = "basic_setup.txt";
+    std::string configFile = "basic_setup.json";
     for (int i=3;i<argc;i++)
     {
         int position;
@@ -111,11 +111,10 @@ int actual_main(int argc, char* argv[])
             continue;
         }
 
-        position=pathTest.find(".txt");
+        position=pathTest.find(".json");
         if (position!=-1)
         {
            configFile = pathTest;
-           loadConfigFile(pathTest.c_str(), parameters);
            continue;
         }
 
@@ -128,7 +127,7 @@ int actual_main(int argc, char* argv[])
         }
         std::cerr << "don't know what to do with optional parameter '"
                   << pathTest
-                  << "'. Please supply .sharp, .txt or .rosy files."
+                  << "'. Please supply .sharp, .json or .rosy files."
                   << std::endl;
         return 1;
     }

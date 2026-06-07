@@ -11,5 +11,5 @@ for i in ../../test/300/Mechanical/*.obj; do
 
     new_filename="${dir_name}""${only_file_name}"
 
-    ./field_computation "${new_filename}" basic_setup_mechanical.txt batch
+    ./field_computation "${new_filename}" basic_setup_mechanical.json batch
 done

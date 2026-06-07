@@ -2,8 +2,8 @@
 
 Task ID: `configurable_pipeline_and_ui_tabs`
 Task Name: `流水线可配置化与 UI Tab 重构`
-Overall Status: In Progress
-Current Phase: `M1 - 设计`
+Overall Status: Done
+Current Phase: `M4 - 收尾`
 
 ## 目标
 把 `quadwild` 以及后续 `Quad From Patches` 阶段中的关键硬编码参数改成可配置项，并重构当前 Python UI：使用多个 Tab 组织设置，支持运行状态显示、中断执行、重置默认、任务目录自动生成与手动刷新/编辑。
@@ -41,5 +41,5 @@ Current Phase: `M1 - 设计`
 - `pyside2_binary_ui`
 
 ## 后续动作
-- 先读取 `quad_from_patches` 的完整配置格式并映射到 `quadwild` 参数结构。
-- 再统一重构 UI 的任务执行和状态管理。
+- 如果后续要进一步降低 UI 复杂度，可以把配置文本编辑器再拆成“基础参数表单 + 高级文本模式”。
+- 如果需要真正强制使用 `PySide6`，可以再增加绑定优先级开关。

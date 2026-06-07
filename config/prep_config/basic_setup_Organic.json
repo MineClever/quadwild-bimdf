@@ -1,0 +1,6 @@
+{
+    "do_remesh": true,
+    "sharp_feature_thr": -1.0,
+    "alpha": 0.02,
+    "scaleFact": 1.0
+}

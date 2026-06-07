@@ -1,0 +1,13 @@
+{
+    "Drift": 100.0,
+    "Srate": 0.01,
+    "SplitOnRem": true,
+    "MaxVal": 5,
+    "CCability": 1.0,
+    "MatchVal": true,
+    "AddNeed": true,
+    "FinalRem": true,
+    "ForceSplit": false,
+    "Subd": false,
+    "MetaCollapse": true
+}

@@ -51,6 +51,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <libTimekeeper/json.hh>
 #include <quadretopology/qr_eval_quantization_json.h>
 
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 
 #ifdef _WIN32
@@ -61,12 +63,73 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using HSW = Timekeeper::HierarchicalStopWatch;
 using Timekeeper::ScopedStopWatch;
+using Json = nlohmann::json;
 
 bool LocalUVSm=false;
 typename TriangleMesh::ScalarType avgEdge(const TriangleMesh& trimesh);
 void loadSetupFile(const std::string& path, QuadRetopology::Parameters& parameters, float& scaleFactor, int& fixedChartClusters);
 void SaveSetupFile(const std::string& path, QuadRetopology::Parameters& parameters, float& scaleFactor, int& fixedChartClusters);
 //int FindCurrentNum(std::string &pathProject);
+
+namespace {
+
+bool jsonBool(const Json& value)
+{
+    if (value.is_boolean()) {
+        return value.get<bool>();
+    }
+    if (value.is_number_integer() || value.is_number_unsigned()) {
+        return value.get<int>() != 0;
+    }
+    if (value.is_number_float()) {
+        return value.get<double>() != 0.0;
+    }
+    throw std::runtime_error("expected boolean-compatible JSON value");
+}
+
+std::vector<float> jsonFloatArray(const Json& array)
+{
+    if (!array.is_array()) {
+        throw std::runtime_error("expected JSON array");
+    }
+    std::vector<float> result;
+    result.reserve(array.size());
+    for (size_t i = 0; i < array.size(); ++i) {
+        result.push_back(array.at(i).get<float>());
+    }
+    return result;
+}
+
+template <typename T>
+void assignIfPresent(const Json& json, const char* key, T& target)
+{
+    if (json.contains(key)) {
+        target = json.at(key).get<T>();
+    }
+}
+
+void assignBoolIfPresent(const Json& json, const char* key, bool& target)
+{
+    if (json.contains(key)) {
+        target = jsonBool(json.at(key));
+    }
+}
+
+Json loadJsonConfig(const std::string& path)
+{
+    std::ifstream stream(path.c_str());
+    if (!stream.is_open()) {
+        throw std::runtime_error(std::string("cannot open setup file ") + path);
+    }
+    Json json;
+    stream >> json;
+    if (!json.is_object()) {
+        throw std::runtime_error(std::string("setup root must be a JSON object: ") + path);
+    }
+    return json;
+}
+
+}
 
 int actual_main(int argc, char *argv[])
 {
@@ -118,7 +181,7 @@ int actual_main(int argc, char *argv[])
 //    parameters.hardParityConstraint = true; //Flag to choose if use hard constraints or not
     if(argc<2 || argc > 5)
     {
-        std::cerr << "usage: " << argv[0] << " <input.obj> [num] [setup.txt] [out_stats.json]"
+        std::cerr << "usage: " << argv[0] << " <input.obj> [num] [setup.json] [out_stats.json]"
                   << std::endl;
         exit(1);
     }
@@ -127,7 +190,7 @@ int actual_main(int argc, char *argv[])
     {
         CurrNum=atoi(argv[2]);
     }
-    std::string configFilename = "basic_setup.txt";
+    std::string configFilename = "basic_setup.json";
     if (argc>3) {
         configFilename = argv[3];
     }
@@ -300,8 +363,7 @@ int actual_main(int argc, char *argv[])
 
    std::string setupFilename = meshFilename;
    setupFilename.erase(partitionFilename.find_last_of("."));
-   //setupFilename.append("_quadrangulation_setup.txt");
-   setupFilename+=std::string("_")+std::to_string(CurrNum)+std::string("_quadrangulation_setup")+std::string(".txt");
+   setupFilename+=std::string("_")+std::to_string(CurrNum)+std::string("_quadrangulation_setup")+std::string(".json");
 
    SaveSetupFile(setupFilename, parameters, scaleFactor, fixedChartClusters);
     sw_save.stop();
@@ -346,222 +408,77 @@ typename TriangleMesh::ScalarType avgEdge(const TriangleMesh& trimesh)
 
 void loadSetupFile(const std::string& path, QuadRetopology::Parameters& parameters, float& scaleFactor, int& fixedChartClusters)
 {
-    FILE *f=fopen(path.c_str(),"rt");
-    if (f == nullptr) {
-        throw std::runtime_error(std::string("cannot open setup file ") + path);
+    const Json json = loadJsonConfig(path);
+
+    assignIfPresent(json, "alpha", parameters.alpha);
+    if (json.contains("ilpMethod")) {
+        const int value = json.at("ilpMethod").get<int>();
+        parameters.ilpMethod = (value == 0) ? QuadRetopology::ILPMethod::ABS : QuadRetopology::ILPMethod::LEASTSQUARES;
     }
-
-    float alphaF;
-    fscanf(f,"alpha %f\n",&alphaF);
-    std::cout<<"ALPHA "<<alphaF<<std::endl;
-    parameters.alpha=alphaF;
-
-    int IntVar=0;
-    fscanf(f,"ilpMethod %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.ilpMethod=QuadRetopology::ILPMethod::ABS;
-    else
-        parameters.ilpMethod=QuadRetopology::ILPMethod::LEASTSQUARES;
-
-    float limitF;
-    fscanf(f,"timeLimit %f\n",&limitF);
-    parameters.timeLimit=limitF;
-
-    float gapF;
-    fscanf(f,"gapLimit %f\n",&gapF);
-    parameters.gapLimit=gapF;
-
-    IntVar=0;
-    fscanf(f,"callbackTimeLimit %d",&IntVar);
-    parameters.callbackTimeLimit.resize(IntVar);
-    for (int i = 0; i < IntVar; i++) {
-        fscanf(f," %f", &parameters.callbackTimeLimit[i]);
+    assignIfPresent(json, "timeLimit", parameters.timeLimit);
+    assignIfPresent(json, "gapLimit", parameters.gapLimit);
+    if (json.contains("callbackTimeLimit")) {
+        parameters.callbackTimeLimit = jsonFloatArray(json.at("callbackTimeLimit"));
     }
-    fscanf(f,"\n");
-
-    IntVar=0;
-    fscanf(f,"callbackGapLimit %d",&IntVar);
-    parameters.callbackGapLimit.resize(IntVar);
-    for (int i = 0; i < IntVar; i++) {
-        fscanf(f," %f", &parameters.callbackGapLimit[i]);
+    if (json.contains("callbackGapLimit")) {
+        parameters.callbackGapLimit = jsonFloatArray(json.at("callbackGapLimit"));
     }
-    fscanf(f,"\n");
+    assignIfPresent(json, "minimumGap", parameters.minimumGap);
+    assignBoolIfPresent(json, "isometry", parameters.isometry);
+    assignBoolIfPresent(json, "regularityQuadrilaterals", parameters.regularityQuadrilaterals);
+    assignBoolIfPresent(json, "regularityNonQuadrilaterals", parameters.regularityNonQuadrilaterals);
+    assignIfPresent(json, "regularityNonQuadrilateralsWeight", parameters.regularityNonQuadrilateralsWeight);
+    assignBoolIfPresent(json, "alignSingularities", parameters.alignSingularities);
+    assignIfPresent(json, "alignSingularitiesWeight", parameters.alignSingularitiesWeight);
+    assignBoolIfPresent(json, "repeatLosingConstraintsIterations", parameters.repeatLosingConstraintsIterations);
+    assignBoolIfPresent(json, "repeatLosingConstraintsQuads", parameters.repeatLosingConstraintsQuads);
+    assignBoolIfPresent(json, "repeatLosingConstraintsNonQuads", parameters.repeatLosingConstraintsNonQuads);
+    assignBoolIfPresent(json, "repeatLosingConstraintsAlign", parameters.repeatLosingConstraintsAlign);
+    assignBoolIfPresent(json, "hardParityConstraint", parameters.hardParityConstraint);
+    assignIfPresent(json, "scaleFact", scaleFactor);
+    assignIfPresent(json, "fixedChartClusters", fixedChartClusters);
+    assignIfPresent(json, "useFlowSolver", parameters.useFlowSolver);
+    assignIfPresent(json, "flow_config_filename", parameters.flow_config_filename);
+    assignIfPresent(json, "satsuma_config_filename", parameters.satsuma_config_filename);
 
-    float mingapF;
-    fscanf(f,"minimumGap %f\n",&mingapF);
-    parameters.minimumGap=mingapF;
-
-    IntVar=0;
-    fscanf(f,"isometry %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.isometry=false;
-    else
-        parameters.isometry=true;
-
-    IntVar=0;
-    fscanf(f,"regularityQuadrilaterals %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.regularityQuadrilaterals=false;
-    else
-        parameters.regularityQuadrilaterals=true;
-
-    IntVar=0;
-    fscanf(f,"regularityNonQuadrilaterals %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.regularityNonQuadrilaterals=false;
-    else
-        parameters.regularityNonQuadrilaterals=true;
-
-    float regularityNonQuadrilateralsWeight;
-    fscanf(f,"regularityNonQuadrilateralsWeight %f\n",&regularityNonQuadrilateralsWeight);
-    parameters.regularityNonQuadrilateralsWeight=regularityNonQuadrilateralsWeight;
-
-    IntVar=0;
-    fscanf(f,"alignSingularities %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.alignSingularities=false;
-    else
-        parameters.alignSingularities=true;
-
-    float alignSingularitiesWeight;
-    fscanf(f,"alignSingularitiesWeight %f\n",&alignSingularitiesWeight);
-    parameters.alignSingularitiesWeight=alignSingularitiesWeight;
-
-    IntVar=0;
-    fscanf(f,"repeatLosingConstraintsIterations %d\n",&IntVar);
-    parameters.repeatLosingConstraintsIterations=IntVar;
-
-    IntVar=0;
-    fscanf(f,"repeatLosingConstraintsQuads %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.repeatLosingConstraintsQuads=false;
-    else
-        parameters.repeatLosingConstraintsQuads=true;
-
-    IntVar=0;
-    fscanf(f,"repeatLosingConstraintsNonQuads %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.repeatLosingConstraintsNonQuads=false;
-    else
-        parameters.repeatLosingConstraintsNonQuads=true;
-
-    IntVar=0;
-    fscanf(f,"repeatLosingConstraintsAlign %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.repeatLosingConstraintsAlign=false;
-    else
-        parameters.repeatLosingConstraintsAlign=true;
-
-    IntVar=0;
-    fscanf(f,"hardParityConstraint %d\n",&IntVar);
-    if (IntVar==0)
-        parameters.hardParityConstraint=false;
-    else
-        parameters.hardParityConstraint=true;
-
-    fscanf(f,"scaleFact %f\n",&scaleFactor);
-    
-    fscanf(f,"fixedChartClusters %d\n",&fixedChartClusters);
-    fscanf(f,"useFlowSolver %d\n",&IntVar);
-    parameters.useFlowSolver = IntVar;
+    std::cout<<"ALPHA "<<parameters.alpha<<std::endl;
     std::cout << "useFlowSolver: " << parameters.useFlowSolver << std::endl;
-    
-    std::array<char, 1024> filename = {0};
-
-    int ret = fscanf(f,"flow_config_filename \"%1000[^\"]\"\n",filename.data());
-    parameters.flow_config_filename = filename.data();
     std::cout << "flow_config_filename: " << parameters.flow_config_filename << std::endl;
-
-    std::fill(filename.begin(), filename.end(), 0);
-
-    ret = fscanf(f,"satsuma_config_filename \"%1000[^\"]\"\n",filename.data());
-    parameters.satsuma_config_filename = filename.data();
     std::cout << "satsuma_config_filename: " << parameters.satsuma_config_filename << std::endl;
-    fclose(f);
 }
 
 void SaveSetupFile(const std::string& path, QuadRetopology::Parameters& parameters, float& scaleFactor, int& fixedChartClusters)
 {
-    FILE *f=fopen(path.c_str(),"wt");
-    assert(f!=NULL);
+    Json json;
+    json["alpha"] = parameters.alpha;
+    json["ilpMethod"] = (parameters.ilpMethod == QuadRetopology::ILPMethod::ABS) ? 0 : 1;
+    json["timeLimit"] = parameters.timeLimit;
+    json["gapLimit"] = parameters.gapLimit;
+    json["callbackTimeLimit"] = parameters.callbackTimeLimit;
+    json["callbackGapLimit"] = parameters.callbackGapLimit;
+    json["minimumGap"] = parameters.minimumGap;
+    json["isometry"] = parameters.isometry;
+    json["regularityQuadrilaterals"] = parameters.regularityQuadrilaterals;
+    json["regularityNonQuadrilaterals"] = parameters.regularityNonQuadrilaterals;
+    json["regularityNonQuadrilateralsWeight"] = parameters.regularityNonQuadrilateralsWeight;
+    json["alignSingularities"] = parameters.alignSingularities;
+    json["alignSingularitiesWeight"] = parameters.alignSingularitiesWeight;
+    json["repeatLosingConstraintsIterations"] = parameters.repeatLosingConstraintsIterations;
+    json["repeatLosingConstraintsQuads"] = parameters.repeatLosingConstraintsQuads;
+    json["repeatLosingConstraintsNonQuads"] = parameters.repeatLosingConstraintsNonQuads;
+    json["repeatLosingConstraintsAlign"] = parameters.repeatLosingConstraintsAlign;
+    json["hardParityConstraint"] = parameters.hardParityConstraint;
+    json["scaleFact"] = static_cast<float>(scaleFactor);
+    json["fixedChartClusters"] = fixedChartClusters;
+    json["useFlowSolver"] = parameters.useFlowSolver;
+    json["flow_config_filename"] = parameters.flow_config_filename;
+    json["satsuma_config_filename"] = parameters.satsuma_config_filename;
 
-    fprintf(f,"alpha %f\n", parameters.alpha);
-
-    if (parameters.ilpMethod==QuadRetopology::ILPMethod::ABS)
-        fprintf(f,"ilpMethod 0\n");
-    else
-        fprintf(f,"ilpMethod 1\n");
-
-    fprintf(f,"timeLimit %f\n", parameters.timeLimit);
-
-    fprintf(f,"gapLimit %f\n", parameters.gapLimit);
-
-    fprintf(f,"callbackTimeLimit %d", static_cast<int>(parameters.callbackTimeLimit.size()));
-    for (float& time : parameters.callbackTimeLimit) {
-        fprintf(f," %f", time);
+    std::ofstream stream(path.c_str());
+    if (!stream.is_open()) {
+        throw std::runtime_error(std::string("cannot write setup file ") + path);
     }
-    fprintf(f,"\n");
-
-    fprintf(f,"callbackGapLimit %d", static_cast<int>(parameters.callbackGapLimit.size()));
-    for (float& gap : parameters.callbackGapLimit) {
-        fprintf(f," %f", gap);
-    }
-    fprintf(f,"\n");
-
-    fprintf(f,"minimumGap %f\n", parameters.minimumGap);
-
-    if (parameters.isometry)
-        fprintf(f,"isometry 1\n");
-    else
-        fprintf(f,"isometry 0\n");
-
-    if (parameters.regularityQuadrilaterals)
-        fprintf(f,"regularityQuadrilaterals 1\n");
-    else
-        fprintf(f,"regularityQuadrilaterals 0\n");
-
-    if (parameters.regularityNonQuadrilaterals)
-        fprintf(f,"regularityNonQuadrilaterals 1\n");
-    else
-        fprintf(f,"regularityNonQuadrilaterals 0\n");
-
-    fprintf(f,"regularityNonQuadrilateralsWeight %f\n", parameters.regularityNonQuadrilateralsWeight);
-
-    if (parameters.alignSingularities)
-        fprintf(f,"alignSingularities 1\n");
-    else
-        fprintf(f,"alignSingularities 0\n");
-
-    fprintf(f,"alignSingularitiesWeight %f\n", parameters.alignSingularitiesWeight);
-
-    fprintf(f,"repeatLosingConstraintsIterations %d\n", parameters.repeatLosingConstraintsIterations);
-
-    if (parameters.repeatLosingConstraintsQuads)
-        fprintf(f,"repeatLosingConstraintsQuads 1\n");
-    else
-        fprintf(f,"repeatLosingConstraintsQuads 0\n");
-
-    if (parameters.repeatLosingConstraintsNonQuads)
-        fprintf(f,"repeatLosingConstraintsNonQuads 1\n");
-    else
-        fprintf(f,"repeatLosingConstraintsNonQuads 0\n");
-
-    if (parameters.repeatLosingConstraintsAlign)
-        fprintf(f,"repeatLosingConstraintsAlign 1\n");
-    else
-        fprintf(f,"repeatLosingConstraintsAling 0\n");
-
-
-    if (parameters.hardParityConstraint)
-        fprintf(f,"hardParityConstraint 1\n");
-    else
-        fprintf(f,"hardParityConstraint 0\n");
-
-    fprintf(f,"scaleFact %f\n", static_cast<float>(scaleFactor));
-
-    fprintf(f,"fixedChartClusters %d\n", fixedChartClusters);
-
-    fclose(f);
+    stream << std::setw(4) << json << std::endl;
 }
 
 //int FindCurrentNum(std::string &pathProject)

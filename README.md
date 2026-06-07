@@ -36,8 +36,8 @@ cmake --build build
 ## Usage
 
 ```
-./build/Build/bin/quadwild path/to/input/mesh.obj  2 config/prep_config/basic_setup.txt
-./build/Build/bin/quad_from_patches path/to/input/mesh_rem_p0.obj 123 config/main_config/flow_noalign_lemon.txt
+./build/Build/bin/quadwild path/to/input/mesh.obj  2 config/prep_config/basic_setup.json
+./build/Build/bin/quad_from_patches path/to/input/mesh_rem_p0.obj 123 config/main_config/flow_noalign_lemon.json
 ```
 
 Note that you need to add `_rem_p0.obj` to the filename of the input mesh; this is

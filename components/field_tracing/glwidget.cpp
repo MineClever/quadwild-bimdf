@@ -24,12 +24,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include "glwidget.h"
+#include <fstream>
+#include <iomanip>
 #include <wrap/qt/trackball.h>
 #include <wrap/gl/picking.h>
 #include <wrap/gl/trimesh.h>
 #include <wrap/qt/anttweakbarMapper.h>
 #include <wrap/gl/gl_field.h>
 #include <QDir>
+#include <nlohmann/json.hpp>
 #include "tracing/GL_vert_field_graph.h"
 #include "tracing/patch_tracer.h"
 #include "tracing/tracer_interface.h"
@@ -130,142 +133,24 @@ void SaveSetupFile(const std::string pathProject,
                    const size_t CurrNum)
 {
     std::string pathSetupFinal=pathProject;
-    pathSetupFinal=pathSetupFinal+"_p"+std::to_string(CurrNum)+".setup";
+    pathSetupFinal=pathSetupFinal+"_p"+std::to_string(CurrNum)+".json";
 
-    FILE *f=fopen(pathSetupFinal.c_str(),"wt");
-    assert(f!=NULL);
+    nlohmann::json json;
+    json["Drift"] = Drift;
+    json["Srate"] = PTr.sample_ratio;
+    json["SplitOnRem"] = PTr.split_on_removal;
+    json["MaxVal"] = PTr.MaxVal;
+    json["CCability"] = PTr.CClarkability;
+    json["MatchVal"] = PTr.match_valence;
+    json["AddNeed"] = add_only_needed;
+    json["FinalRem"] = final_removal;
+    json["ForceSplit"] = force_split;
+    json["Subd"] = subdivide_when_save;
+    json["MetaCollapse"] = meta_mesh_collapse;
 
-    //    fprintf(f,"Srate %f\n",PTr.sample_ratio);
-    //    fprintf(f,"Drift %f\n",Drift);
-
-    //    if (PTr.split_on_removal)
-    //        fprintf(f,"Split 1\n");
-    //    else
-    //        fprintf(f,"Split 0\n");
-
-
-    //    FILE *f=fopen(path.c_str(),"rt");
-    //    assert(f!=NULL);
-
-    //    float Driftf;
-    //    fscanf(f,"Drift %f\n",&Driftf);
-    //    Drift=(TraceMesh::ScalarType)Driftf;
-    //    std::cout<<"DRIFT "<<Drift<<std::endl;
-    fprintf(f,"Drift %f\n",Drift);
-
-    //    float SRatef;
-    //    fscanf(f,"Srate %f\n",&SRatef);
-    //    PTr.sample_ratio=(TraceMesh::ScalarType)SRatef;
-    //    std::cout<<"SAMPLE RATE "<<PTr.sample_ratio<<std::endl;
-    fprintf(f,"Srate %f\n",PTr.sample_ratio);
-
-    //    int IntVar=0;
-    //    fscanf(f,"SplitOnRem %d\n",&IntVar);
-    //    std::cout<<"SPLIT "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        PTr.split_on_removal=false;
-    //    else
-    //        PTr.split_on_removal=true;
-
-    if (PTr.split_on_removal)
-        fprintf(f,"SplitOnRem 1\n");
-    else
-        fprintf(f,"SplitOnRem 0\n");
-
-    //fscanf(f,"MaxVal %d\n",&PTr.MaxVal);
-    fprintf(f,"MaxVal %d\n",PTr.MaxVal);
-    //std::cout<<"INCREASE VAL "<<PTr.MaxVal<<std::endl;
-
-    //    float CCbility;
-    //    fscanf(f,"CCability %f\n",&CCbility);
-    //    PTr.CClarkability=(TraceMesh::ScalarType)CCbility;
-    //    std::cout<<"CCABILITY "<<PTr.CClarkability<<std::endl;
-    fprintf(f,"CCability %f\n",PTr.CClarkability);
-
-    //    fscanf(f,"MatchVal %d\n",&IntVar);
-    //    std::cout<<"MATCH VAL "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        PTr.match_valence=false;
-    //    else
-    //        PTr.match_valence=true;
-    if (PTr.match_valence)
-        fprintf(f,"MatchVal 1\n");
-    else
-        fprintf(f,"MatchVal 0\n");
-
-    //    fscanf(f,"AddNeed %d\n",&IntVar);
-    //    std::cout<<"ADD NEED "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        add_only_needed=false;
-    //    else
-    //        add_only_needed=true;
-    if (add_only_needed)
-        fprintf(f,"AddNeed 1\n");
-    else
-        fprintf(f,"AddNeed 0\n");
-
-    //    fscanf(f,"InterleaveRem %d\n",&IntVar);
-    //    std::cout<<"INTERLEAVE REMOVE "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        interleave_removal=false;
-    //    else
-    //        interleave_removal=true;
-    //    if (interleave_removal)
-    //        fprintf(f,"InterleaveRem 1\n");
-    //    else
-    //        fprintf(f,"InterleaveRem 0\n");
-
-    //    fscanf(f,"InterleaveSmooth %d\n",&IntVar);
-    //    std::cout<<"INTERLEAVE SMOOTH "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        interleave_smooth=false;
-    //    else
-    //        interleave_smooth=true;
-    //    if (interleave_smooth)
-    //        fprintf(f,"InterleaveSmooth 1\n");
-    //    else
-    //        fprintf(f,"InterleaveSmooth 0\n");
-
-    //    fscanf(f,"FinalRem %d\n",&IntVar);
-    //    std::cout<<"FINAL REMOVE "<<IntVar<<std::endl;
-    //    if (IntVar==0)
-    //        final_removal=false;
-    //    else
-    //        final_removal=true;
-    if (final_removal)
-        fprintf(f,"FinalRem 1\n");
-    else
-        fprintf(f,"FinalRem 0\n");
-
-
-    if (force_split)
-        fprintf(f,"Force Split 1\n");
-    else
-        fprintf(f,"Force Split 0\n");
-
-    if (subdivide_when_save)
-        fprintf(f,"Subd 1\n");
-    else
-        fprintf(f,"Subd 0\n");
-
-    if (meta_mesh_collapse)
-        fprintf(f,"MetaCollapse 1\n");
-    else
-        fprintf(f,"MetaCollapse 0\n");
-
-    //    if (PTr.avoid_increase_valence)
-    //        fprintf(f,"IncreaseValRem 1\n");
-    //    else
-    //        fprintf(f,"IncreaseValRem 0\n");
-
-    //    if (PTr.avoid_collapse_irregular)
-    //        fprintf(f,"IrregularRem 1\n");
-    //    else
-    //        fprintf(f,"IrregularRem 0\n");
-
-    //fprintf(f,"DistortionL %f\n",PTr.max_lenght_distortion);
-
-    fclose(f);
+    std::ofstream stream(pathSetupFinal.c_str());
+    assert(stream.is_open());
+    stream << std::setw(4) << json << std::endl;
 }
 
 
@@ -274,48 +159,34 @@ void SaveSetupFile(const std::string pathProject,
 
 void LoadSetupFile(std::string path)
 {
-    FILE *f=fopen(path.c_str(),"rt");
-    assert(f!=NULL);
+    std::ifstream stream(path.c_str());
+    assert(stream.is_open());
+    nlohmann::json json;
+    stream >> json;
 
-    float Driftf;
-    fscanf(f,"Drift %f\n",&Driftf);
-    Drift=(TraceMesh::ScalarType)Driftf;
+    Drift = static_cast<TraceMesh::ScalarType>(json.value("Drift", static_cast<double>(Drift)));
     std::cout<<"DRIFT "<<Drift<<std::endl;
 
-    float SRatef;
-    fscanf(f,"Srate %f\n",&SRatef);
-    PTr.sample_ratio=(TraceMesh::ScalarType)SRatef;
+    PTr.sample_ratio = static_cast<TraceMesh::ScalarType>(json.value("Srate", static_cast<double>(PTr.sample_ratio)));
     std::cout<<"SAMPLE RATE "<<PTr.sample_ratio<<std::endl;
 
-    int IntVar=0;
-    fscanf(f,"SplitOnRem %d\n",&IntVar);
+    int IntVar = json.value("SplitOnRem", PTr.split_on_removal ? 1 : 0);
     std::cout<<"SPLIT "<<IntVar<<std::endl;
-    if (IntVar==0)
-        PTr.split_on_removal=false;
-    else
-        PTr.split_on_removal=true;
+    PTr.split_on_removal = (IntVar != 0);
 
-    fscanf(f,"MaxVal %d\n",&PTr.MaxVal);
+    PTr.MaxVal = json.value("MaxVal", PTr.MaxVal);
     std::cout<<"INCREASE VAL "<<PTr.MaxVal<<std::endl;
 
-    float CCbility;
-    fscanf(f,"CCability %f\n",&CCbility);
-    PTr.CClarkability=(TraceMesh::ScalarType)CCbility;
+    PTr.CClarkability = static_cast<TraceMesh::ScalarType>(json.value("CCability", static_cast<double>(PTr.CClarkability)));
     std::cout<<"CCABILITY "<<PTr.CClarkability<<std::endl;
 
-    fscanf(f,"MatchVal %d\n",&IntVar);
+    IntVar = json.value("MatchVal", PTr.match_valence ? 1 : 0);
     std::cout<<"MATCH VAL "<<IntVar<<std::endl;
-    if (IntVar==0)
-        PTr.match_valence=false;
-    else
-        PTr.match_valence=true;
+    PTr.match_valence = (IntVar != 0);
 
-    fscanf(f,"AddNeed %d\n",&IntVar);
+    IntVar = json.value("AddNeed", add_only_needed ? 1 : 0);
     std::cout<<"ADD NEED "<<IntVar<<std::endl;
-    if (IntVar==0)
-        add_only_needed=false;
-    else
-        add_only_needed=true;
+    add_only_needed = (IntVar != 0);
 
     //    fscanf(f,"InterleaveRem %d\n",&IntVar);
     //    std::cout<<"INTERLEAVE REMOVE "<<IntVar<<std::endl;
@@ -331,34 +202,22 @@ void LoadSetupFile(std::string path)
     //    else
     //        interleave_smooth=true;
 
-    fscanf(f,"FinalRem %d\n",&IntVar);
+    IntVar = json.value("FinalRem", final_removal ? 1 : 0);
     std::cout<<"FINAL REMOVE "<<IntVar<<std::endl;
-    if (IntVar==0)
-        final_removal=false;
-    else
-        final_removal=true;
+    final_removal = (IntVar != 0);
 
 
-    fscanf(f,"ForceSplit %d\n",&IntVar);
+    IntVar = json.value("ForceSplit", force_split ? 1 : 0);
     std::cout<<"FORCE SPLIT "<<IntVar<<std::endl;
-    if (IntVar==0)
-        force_split=false;
-    else
-        force_split=true;
+    force_split = (IntVar != 0);
 
-    fscanf(f,"Subd %d\n",&IntVar);
+    IntVar = json.value("Subd", subdivide_when_save ? 1 : 0);
     std::cout<<"SUBDIVIDE WHEN SAVE "<<IntVar<<std::endl;
-    if (IntVar==0)
-        subdivide_when_save=false;
-    else
-        subdivide_when_save=true;
+    subdivide_when_save = (IntVar != 0);
 
-    fscanf(f,"MetaCollapse %d\n",&IntVar);
+    IntVar = json.value("MetaCollapse", meta_mesh_collapse ? 1 : 0);
     std::cout<<"META COLLAPSE "<<IntVar<<std::endl;
-    if (IntVar==0)
-        meta_mesh_collapse=false;
-    else
-        meta_mesh_collapse=true;
+    meta_mesh_collapse = (IntVar != 0);
 
     //    if ((batch_process)&&(BatchSample>0))
     //        PTr.sample_ratio=BatchSample;
@@ -1027,7 +886,7 @@ GLWidget::GLWidget(QWidget *parent)
     //hasToPick=false;
     InitBar(this);
     //LoadSetup();
-    LoadSetupFile(std::string("basic_setup.txt"));
+    LoadSetupFile(std::string("basic_setup.json"));
     FindCurrentNum();
     LoadAll();
     if (batch_process)
