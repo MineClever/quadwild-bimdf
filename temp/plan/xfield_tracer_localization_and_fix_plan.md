@@ -2,8 +2,8 @@
 
 Task ID: `xfield_tracer_localization_and_fix`
 Task Name: `xfield_tracer 本地化与 tracing 修复`
-Overall Status: In Progress
-Current Phase: `M1 - 设计`
+Overall Status: Done
+Current Phase: `M4 - 收尾`
 
 ## 目标
 将 `libs/xfield_tracer` 从 git submodule 改为仓库内本地维护代码，并直接在本地代码上修复 tracing 阶段的 `invalid map<K, T> key` 异常中断问题。

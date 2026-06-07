@@ -531,6 +531,18 @@ class ProcessWorker(QtCore.QObject):
             quadwild_command.extend(split_extra_args(self._settings["quadwild_extra_args"]))
             command_specs.append((u"quadwild", quadwild_command))
 
+            should_run_viz = self._settings.get("enable_viz_export", False)
+            can_run_viz_after_quadwild = (workflow == "full_pipeline") or (workflow == "quadwild_only" and stop_step in ("2", "3"))
+            if should_run_viz and can_run_viz_after_quadwild:
+                rem_mesh = os.path.splitext(staged_quadwild_mesh)[0] + "_rem.obj"
+                viz_command = [
+                    self._settings["viz_mesh_results_binary"],
+                    rem_mesh
+                ]
+                command_specs.append((u"viz_mesh_results", viz_command))
+            elif should_run_viz and workflow == "quadwild_only":
+                self.log_message.emit(u"[WARN] 当前 quadwild 停止步骤早于 tracing，可视化导出已跳过。")
+
             if workflow == "full_pipeline":
                 rem_p0_mesh = os.path.splitext(staged_quadwild_mesh)[0] + "_rem_p0.obj"
                 quad_from_patches_command = self.build_quad_from_patches_command(rem_p0_mesh, staged_qfp_config, workspace)
@@ -679,11 +691,25 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.quadwild_binary_button = QtWidgets.QPushButton(u"浏览...")
         self.qfp_binary_edit = QtWidgets.QLineEdit()
         self.qfp_binary_button = QtWidgets.QPushButton(u"浏览...")
+        self.viz_binary_edit = QtWidgets.QLineEdit()
+        self.viz_binary_button = QtWidgets.QPushButton(u"浏览...")
         self.quadwild_binary_edit.setToolTip(u"quadwild 可执行文件路径。若填写仓库内旧路径，UI 会自动解析到最新构建产物。")
         self.qfp_binary_edit.setToolTip(u"quad_from_patches 可执行文件路径。若填写仓库内旧路径，UI 会自动解析到最新构建产物。")
+        self.viz_binary_edit.setToolTip(u"viz_mesh_results 可执行文件路径。若启用可视化导出，UI 会在 quadwild 生成 tracing 中间结果后调用它，导出 field / sharp / patch 检查文件。")
         binary_form.addRow(u"quadwild.exe", self.browse_row(self.quadwild_binary_edit, self.quadwild_binary_button))
         binary_form.addRow(u"quad_from_patches.exe", self.browse_row(self.qfp_binary_edit, self.qfp_binary_button))
+        binary_form.addRow(u"viz_mesh_results.exe", self.browse_row(self.viz_binary_edit, self.viz_binary_button))
         layout.addWidget(binary_group)
+
+        viz_group = QtWidgets.QGroupBox(u"检查导出")
+        viz_form = QtWidgets.QFormLayout(viz_group)
+        self.enable_viz_checkbox = QtWidgets.QCheckBox(u"运行 viz_mesh_results 导出检查文件")
+        self.enable_viz_checkbox.setToolTip(u"勾选后，在 quadwild 完成 tracing 并生成 *_rem / *_rem_p0 相关文件后，自动调用 viz_mesh_results.exe 生成 _field_mesh.ply、_sharp_mesh.ply、_borderpatch_mesh.ply、_colorpatch_mesh.ply 等可视化文件。")
+        viz_hint = QtWidgets.QLabel(u"依赖 quadwild 的 step 2 或完整流程输出；若仅停在 step 1，将自动跳过。")
+        viz_hint.setWordWrap(True)
+        viz_form.addRow(self.enable_viz_checkbox)
+        viz_form.addRow(viz_hint)
+        layout.addWidget(viz_group)
 
         overview_input_group = QtWidgets.QGroupBox(u"QuadWild 快速输入")
         overview_form = QtWidgets.QFormLayout(overview_input_group)
@@ -699,8 +725,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.job_name_generate_button.clicked.connect(self.regenerate_job_name)
         self.quadwild_binary_button.clicked.connect(lambda: self.choose_file(self.quadwild_binary_edit, u"选择 quadwild 可执行文件", u"Executable (*.exe);;All Files (*)"))
         self.qfp_binary_button.clicked.connect(lambda: self.choose_file(self.qfp_binary_edit, u"选择 quad_from_patches 可执行文件", u"Executable (*.exe);;All Files (*)"))
+        self.viz_binary_button.clicked.connect(lambda: self.choose_file(self.viz_binary_edit, u"选择 viz_mesh_results 可执行文件", u"Executable (*.exe);;All Files (*)"))
         self.quadwild_input_general_button.clicked.connect(lambda: self.choose_file(self.quadwild_input_general_edit, u"选择 QuadWild 输入网格", u"Mesh Files (*.obj *.ply);;All Files (*)"))
-        self.connect_preview_updates([self.output_root_edit, self.job_name_edit, self.quadwild_binary_edit, self.qfp_binary_edit])
+        self.enable_viz_checkbox.stateChanged.connect(self.update_command_preview)
+        self.connect_preview_updates([self.output_root_edit, self.job_name_edit, self.quadwild_binary_edit, self.qfp_binary_edit, self.viz_binary_edit])
         return tab
 
     def build_quadwild_tab(self):
@@ -1304,6 +1332,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             self.quadwild_binary_edit.setText(preferred_repo_binary("quadwild.exe"))
         if not self.qfp_binary_edit.text().strip():
             self.qfp_binary_edit.setText(preferred_repo_binary("quad_from_patches.exe"))
+        if not self.viz_binary_edit.text().strip():
+            self.viz_binary_edit.setText(preferred_repo_binary("viz_mesh_results.exe"))
         if not self.quadwild_config_path_edit.text().strip():
             self.quadwild_config_path_edit.setText(default_prep_config())
         if not self.qfp_config_path_edit.text().strip():
@@ -1322,8 +1352,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "job_name": text_type(""),
             "quadwild_binary": preferred_repo_binary("quadwild.exe"),
             "quad_from_patches_binary": preferred_repo_binary("quad_from_patches.exe"),
+            "viz_mesh_results_binary": preferred_repo_binary("viz_mesh_results.exe"),
             "quadwild_input_mesh": text_type(""),
             "quad_from_patches_input_mesh": text_type(""),
+            "enable_viz_export": False,
             "quadwild_stop_step": "3",
             "sharp_file": text_type(""),
             "rosy_file": text_type(""),
@@ -1372,6 +1404,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.job_name_manually_edited = bool(ensure_text(data.get("job_name", "")).strip())
         self.quadwild_binary_edit.setText(ensure_text(data.get("quadwild_binary", "")))
         self.qfp_binary_edit.setText(ensure_text(data.get("quad_from_patches_binary", "")))
+        self.viz_binary_edit.setText(ensure_text(data.get("viz_mesh_results_binary", "")))
+        self.enable_viz_checkbox.setChecked(bool(data.get("enable_viz_export", False)))
         self.quadwild_input_edit.setText(ensure_text(data.get("quadwild_input_mesh", "")))
         self.quadwild_input_general_edit.setText(ensure_text(data.get("quadwild_input_mesh", "")))
         self.qfp_input_edit.setText(ensure_text(data.get("quad_from_patches_input_mesh", "")))
@@ -1429,6 +1463,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.output_root_edit.setText(defaults["output_root"])
         self.quadwild_binary_edit.setText(defaults["quadwild_binary"])
         self.qfp_binary_edit.setText(defaults["quad_from_patches_binary"])
+        self.viz_binary_edit.setText(defaults["viz_mesh_results_binary"])
+        self.enable_viz_checkbox.setChecked(bool(defaults["enable_viz_export"]))
         self.sync_quadwild_input_widgets(defaults["quadwild_input_mesh"])
         self.qfp_input_edit.setText(defaults["quad_from_patches_input_mesh"])
         self.set_combo_by_data(self.stop_step_combo, defaults["quadwild_stop_step"])
@@ -1499,6 +1535,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
                 errors.append(u".sharp 文件不存在。")
             if settings["rosy_file"] and not os.path.isfile(settings["rosy_file"]):
                 errors.append(u".rosy 文件不存在。")
+            if settings["enable_viz_export"] and not os.path.isfile(settings["viz_mesh_results_binary"]):
+                errors.append(u"viz_mesh_results 二进制不存在。")
 
         if workflow in ("full_pipeline", "quad_from_patches_only"):
             if not os.path.isfile(settings["quad_from_patches_binary"]):
@@ -1519,10 +1557,13 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "job_name": ensure_text(self.job_name_edit.text()).strip() or generate_job_name(workflow, self.current_primary_input_path()),
             "quadwild_binary_requested": ensure_text(self.quadwild_binary_edit.text()).strip(),
             "quad_from_patches_binary_requested": ensure_text(self.qfp_binary_edit.text()).strip(),
+            "viz_mesh_results_binary_requested": ensure_text(self.viz_binary_edit.text()).strip(),
             "quadwild_binary": normalize_binary_path(self.quadwild_binary_edit.text(), "quadwild.exe"),
             "quad_from_patches_binary": normalize_binary_path(self.qfp_binary_edit.text(), "quad_from_patches.exe"),
+            "viz_mesh_results_binary": normalize_binary_path(self.viz_binary_edit.text(), "viz_mesh_results.exe"),
             "quadwild_input_mesh": ensure_text(self.quadwild_input_edit.text()).strip(),
             "quad_from_patches_input_mesh": ensure_text(self.qfp_input_edit.text()).strip(),
+            "enable_viz_export": self.enable_viz_checkbox.isChecked(),
             "quadwild_stop_step": ensure_text(self.stop_step_combo.currentData()),
             "sharp_file": ensure_text(self.sharp_edit.text()).strip(),
             "rosy_file": ensure_text(self.rosy_edit.text()).strip(),
@@ -1567,6 +1608,20 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             lines.append(u"")
             lines.append(u"[quadwild]")
             lines.append(command_to_text(quadwild_command))
+
+            if settings["enable_viz_export"]:
+                if workflow == "full_pipeline" or settings["quadwild_stop_step"] in ("2", "3"):
+                    viz_command = [
+                        settings["viz_mesh_results_binary"] or u"<viz_mesh_results.exe>",
+                        u"<工作目录中的 *_rem.obj>"
+                    ]
+                    lines.append(u"")
+                    lines.append(u"[viz_mesh_results]")
+                    lines.append(command_to_text(viz_command))
+                else:
+                    lines.append(u"")
+                    lines.append(u"[viz_mesh_results]")
+                    lines.append(u"<已启用，但当前会在 step 1 停止，因此不会执行>")
 
         if workflow == "full_pipeline":
             qfp_command = [
@@ -1652,6 +1707,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             self.append_log(u"[INFO] quadwild 二进制已自动切换为最新可用版本: {0}".format(settings["quadwild_binary"]))
         if settings["workflow"] in ("full_pipeline", "quad_from_patches_only") and settings["quad_from_patches_binary"] != settings["quad_from_patches_binary_requested"]:
             self.append_log(u"[INFO] quad_from_patches 二进制已自动切换为最新可用版本: {0}".format(settings["quad_from_patches_binary"]))
+        if settings["enable_viz_export"] and settings["viz_mesh_results_binary"] != settings["viz_mesh_results_binary_requested"]:
+            self.append_log(u"[INFO] viz_mesh_results 二进制已自动切换为最新可用版本: {0}".format(settings["viz_mesh_results_binary"]))
 
         self.worker_thread = QtCore.QThread(self)
         self.worker = ProcessWorker(settings)
