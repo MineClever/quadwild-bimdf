@@ -42,6 +42,7 @@ build*/
 CMakeLists.txt.user
 .cache
 /build*
+!/Build_Windows_Release.bat
 .DS_Store
 /.vs
 ui_runs/
