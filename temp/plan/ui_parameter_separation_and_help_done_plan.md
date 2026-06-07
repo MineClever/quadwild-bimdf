@@ -12,15 +12,19 @@ Task ID: `ui_parameter_separation_and_help`
 - 2026-06-08：确认 `quadwild/functions.cpp` 与 `components/quad_from_patches/main.cpp` 的实际读取参数集合并不完全相同，现有 UI 需要按真实使用范围重新分组。
 - 2026-06-08：按真实读取范围重构 `scripts/quadwild_ui.py` 的字段分组，区分“预处理与场 / 共享量化目标 / 求解器 / 约束策略 / 仅 QuadWild 后处理 / 外部求解器”。
 - 2026-06-08：为所有配置字段以及主要执行字段补充 tooltip，说明作用、适用阶段和基本用法。
+- 2026-06-08：补充 `QuadWild` 与 `Quad From Patches` 共享目标参数的实时同步，并新增外部求解器专用 UI 配置页。
 
 ## 实现说明
 - `quadwild` 页只保留 `quadwild.exe` 实际读取的参数，并显式保留其独有的 `do_remesh`、`sharp_feature_thr`、`chartSmoothingIterations`、`quadrangulation*`、`feasibilityFix`。
 - `quad_from_patches` 页只保留 `quad_from_patches.exe` 实际读取的参数，不再混入 `quadwild` 专属字段。
 - 配置表单从单一长表切换为按 section 分组的多个 `QGroupBox`，并在每个字段 spec 上新增 `help` 文本供 UI tooltip 使用。
+- 主配置共有字段通过 `SHARED_MAIN_CONFIG_KEYS` 和 `sync_shared_main_field()` 在两个 tab 间实时同步。
+- 新增“外部求解器”页，直接编辑 flow / satsuma JSON；运行时 UI 会把它们写入任务目录，并自动回填到主配置的 `flow_config_filename` / `satsuma_config_filename`。
 
 ## 验证说明
 - `python -m py_compile scripts\\quadwild_ui.py` 通过。
 - 关键代码位置已确认：字段分组和帮助文本位于 `scripts/quadwild_ui.py` 的 `QUADWILD_FORM_FIELDS`、`QFP_FORM_FIELDS` 与 `apply_field_help()`。
+- 新增的共享同步与外部求解器 UI 逻辑位于 `scripts/quadwild_ui.py` 的 `build_external_solver_tab()`、`collect_main_config_data()`、`load_external_configs_from_main_data()` 与 `sync_shared_main_field()`。
 
 ## 收尾状态
 已完成。

@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import datetime
+import contextlib
 import json
 import os
 import re
@@ -15,8 +16,10 @@ import traceback
 
 QT_BINDING = None
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    QT_BINDING = "PySide2"
+    with open(os.devnull, "w") as _null_stream:
+        with contextlib.redirect_stderr(_null_stream):
+            from PySide2 import QtCore, QtGui, QtWidgets
+            QT_BINDING = "PySide2"
 except Exception:
     try:
         from PySide6 import QtCore, QtGui, QtWidgets
@@ -142,6 +145,14 @@ def default_main_config():
     return os.path.join(repo_root(), "config", "main_config", "flow_noalign_lemon.json")
 
 
+def default_flow_solver_config():
+    return os.path.join(repo_root(), "config", "main_config", "flow_virtual_simple.json")
+
+
+def default_satsuma_config():
+    return os.path.join(repo_root(), "config", "satsuma", "lemon.json")
+
+
 def default_output_root():
     return os.path.join(repo_root(), "ui_runs")
 
@@ -244,8 +255,51 @@ def number_list_to_text(values):
     return u", ".join([ensure_text(value) for value in values])
 
 
+def deep_copy_json_dict(data):
+    return json.loads(json.dumps(data))
+
+
+def nested_get(data, dotted_key, default=None):
+    current = data
+    for part in dotted_key.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return default
+        current = current[part]
+    return current
+
+
+def nested_set(data, dotted_key, value):
+    current = data
+    parts = dotted_key.split(".")
+    for part in parts[:-1]:
+        if part not in current or not isinstance(current[part], dict):
+            current[part] = {}
+        current = current[part]
+    current[parts[-1]] = value
+
+
+def resolve_config_reference(path_value, base_dir=None):
+    path_value = ensure_text(path_value).strip()
+    if not path_value:
+        return text_type("")
+    if os.path.isabs(path_value):
+        return path_value
+    candidates = []
+    if base_dir:
+        candidates.append(os.path.abspath(os.path.join(base_dir, path_value)))
+    candidates.append(os.path.abspath(os.path.join(repo_root(), path_value)))
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    if base_dir:
+        return os.path.abspath(os.path.join(base_dir, path_value))
+    return os.path.abspath(os.path.join(repo_root(), path_value))
+
+
 QUADWILD_DEFAULTS = read_json_file(default_prep_config(), {})
 QFP_DEFAULTS = read_json_file(default_main_config(), {})
+FLOW_SOLVER_DEFAULTS = read_json_file(default_flow_solver_config(), {})
+SATSUMA_DEFAULTS = read_json_file(default_satsuma_config(), {})
 
 
 QUADWILD_FORM_FIELDS = [
@@ -275,9 +329,7 @@ QUADWILD_FORM_FIELDS = [
     {"key": "quadrangulationFixedSmoothingIterations", "label": u"Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。边界固定时的 quadrangulation 平滑次数。"},
     {"key": "quadrangulationNonFixedSmoothingIterations", "label": u"Non-Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。边界可动时的 quadrangulation 平滑次数。"},
     {"key": "feasibilityFix", "label": u"Feasibility Fix", "type": "bool", "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。尝试修复量化可行性问题。"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"共享参数。启用 Bi-MDF / flow 路线；通常为当前推荐路径。"},
-    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"共享参数。flow 求解器的额外 JSON 配置路径。留空则使用默认行为。"},
-    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"共享参数。Satsuma 求解器配置路径。仅在对应求解路径启用时生效。"},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"共享参数。启用 Bi-MDF / flow 路线；具体 flow 与 satsuma 细节请在“外部求解器”页配置。"},
 ]
 
 
@@ -302,10 +354,38 @@ QFP_FORM_FIELDS = [
     {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool", "section": u"约束策略", "help": u"是否重复尝试非四边形类失败约束。"},
     {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool", "section": u"约束策略", "help": u"是否重复尝试对齐类失败约束。"},
     {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool", "section": u"约束策略", "help": u"启用更严格的 parity 约束。"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"启用 Bi-MDF / flow 路径。"},
-    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"flow 求解器附加配置文件。"},
-    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"Satsuma 求解器附加配置文件。"},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"启用 Bi-MDF / flow 路径；具体 flow 与 satsuma 细节请在“外部求解器”页配置。"},
 ]
+
+
+FLOW_SOLVER_FORM_FIELDS = [
+    {"key": "paired_half_target", "label": u"Half Target", "type": "combo", "choices": [("half", u"half"), ("simple", u"simple")], "section": u"总体策略", "help": u"控制 paired 边在 Bi-MDF 建模时如何拆成两个子目标。`simple` 会调用 virtual_subside_target，通常更稳，也是当前默认配置；`half` 会直接按 1/2-1/2 平分目标，只有在你明确想要更对称、但能接受更强人为假设时再试。推荐：先保持 `simple`。"},
+    {"key": "paired_resolve_new_targets", "label": u"Resolve New Targets", "type": "bool", "section": u"总体策略", "help": u"第二轮 resolve 时，是否根据上一轮解出的两条 paired 子边流量重新分配目标。开启后，第二轮会更贴近第一轮真实解，通常更容易消化 paired 边不平衡；关闭则继续沿用初始目标。推荐：默认开启，仅在你希望两轮目标严格一致时关闭。"},
+    {"key": "paired_initial.iso_weight", "label": u"Initial Iso Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"Paired Initial", "help": u"paired 初始求解阶段的等距项权重，对应源码中的 aligned_iso_scale。值越大，paired 子边长度越强地贴近目标；值越小，求解器会更愿意为了整体可行性放松长度一致。推荐：从默认 `1.0` 开始；如果 paired 边分配明显失真可上调到 `1.5-3`，若可行性差或过度僵硬可降到 `0.5`。"},
+    {"key": "paired_initial.iso_objective", "label": u"Initial Iso Objective", "type": "combo", "choices": [("abs", u"abs"), ("quad", u"quad")], "section": u"Paired Initial", "help": u"paired 初始阶段的等距代价形式。`quad` 更强地惩罚大偏差，适合默认求稳；`abs` 对离群偏差更宽容，通常在后续收敛或困难模型上更稳。推荐：初始阶段保留默认 `quad`。"},
+    {"key": "paired_initial.unalign_weight", "label": u"Initial Unalign Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"Paired Initial", "help": u"paired 初始阶段的未对齐惩罚权重。值越大，左右 paired 侧越不允许出现不一致拆分，但过大可能让问题更硬。推荐：默认 `2.0`；若 paired 边经常拆得很偏，可提高到 `3-6`，若求解困难则先降回 `1-2`。"},
+    {"key": "paired_resolve.iso_weight", "label": u"Resolve Iso Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"Paired Resolve", "help": u"paired resolve 阶段的等距项权重。这个阶段是在已有前一轮解的基础上做修正，通常保持与初始相同或略强即可。推荐：默认 `1.0`；只有在第二轮仍然出现明显长度漂移时再提高。"},
+    {"key": "paired_resolve.iso_objective", "label": u"Resolve Iso Objective", "type": "combo", "choices": [("abs", u"abs"), ("quad", u"quad")], "section": u"Paired Resolve", "help": u"paired resolve 阶段的等距代价形式。当前默认 `abs`，因为第二轮更偏向稳健修正而不是继续放大大偏差惩罚。推荐：保留 `abs`；如果你想让第二轮也更激进地压大偏差，可试 `quad`。"},
+    {"key": "paired_resolve.unalign_weight", "label": u"Resolve Unalign Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"Paired Resolve", "help": u"paired resolve 阶段的未对齐惩罚权重。默认 `4.0` 高于初始阶段，表示第二轮会更强地拉齐 paired 侧拆分。推荐：先保持默认；若最终 paired 边仍不齐可继续上调到 `6-8`，若第二轮经常把问题推向不可行或质量下降则回落到 `2-4`。"},
+]
+
+
+SATSUMA_FORM_FIELDS = [
+    {"key": "double_cover.max_deviation", "label": u"DC Max Deviation", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"Double Cover", "help": u"double-cover 近似阶段的最大允许偏差。源码会把它传入 `BiMDF_to_BiMCF` 作为 `max_deviation`，值越大，近似空间越宽、通常更稳但更慢；值太小可能让近似表达能力不足。推荐：默认 `5`；小模型或追求更严近似可试 `3-4`，大模型或经常卡在近似不足时可升到 `6-8`。"},
+    {"key": "double_cover.matching_solver", "label": u"DC Matching Solver", "type": "combo", "choices": [("Lemon", u"Lemon"), ("lemon", u"lemon")], "section": u"Double Cover", "help": u"double-cover 阶段使用的 matching / MCF 后端。当前仓库默认与主配置都使用 `Lemon`，兼容性最好。推荐：保持 `Lemon`，除非你明确接入了其他后端并验证可用。"},
+    {"key": "double_cover.evening_mode", "label": u"DC Evening Mode", "type": "combo", "choices": [("MST", u"MST"), ("RoundToEven", u"RoundToEven")], "section": u"Double Cover", "help": u"决定 even RHS 的猜测方式，即 double-cover 之前如何把问题调整到偶数约束。`MST` 更稳，是默认方案；`RoundToEven` 更直接但可能更粗糙。推荐：优先 `MST`，只有在调试近似策略或想比较更简单的 even 化方式时再试 `RoundToEven`。"},
+    {"key": "double_cover.method", "label": u"DC Method", "type": "combo", "choices": [("HalfAsymmetric", u"HalfAsymmetric"), ("HalfSymmetric", u"HalfSymmetric")], "section": u"Double Cover", "help": u"控制 BiMCF 向 MCF 的 half reduction 方式。`HalfAsymmetric` 是库里的默认方法，也是当前配置默认；`HalfSymmetric` 更对称，但常配合关闭 refinement 用于近似变体测试。推荐：保持 `HalfAsymmetric`，只有在比较不同近似风格时再试 `HalfSymmetric`。"},
+    {"key": "double_cover.verbosity", "label": u"DC Verbosity", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"Double Cover", "help": u"仅控制 double-cover 阶段的日志细节。`0-1` 适合日常运行，`2+` 适合排查 evening / max deviation 行为。推荐：默认 `1`；定位问题时临时调到 `2` 或 `3`。"},
+    {"key": "refine_with_matching", "label": u"Refine With Matching", "type": "bool", "section": u"Refinement", "help": u"是否在 double-cover 得到初始解后继续做 matching refinement。源码里关闭后会直接返回近似解，开启后会按 `refinement_maxdev_min..max` 循环改进成本。推荐：默认开启；只有在你只想要快速近似结果、或专门比较 DC 结果时关闭。"},
+    {"key": "matching_solver", "label": u"Matching Solver", "type": "combo", "choices": [("Lemon", u"Lemon"), ("lemon", u"lemon")], "section": u"Refinement", "help": u"refinement 阶段的 matching 求解后端。当前项目默认全用 `Lemon`，最稳。推荐：保持 `Lemon`。"},
+    {"key": "refinement_maxdev_min", "label": u"Refine MaxDev Min", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"Refinement", "help": u"refinement 扫描的起始 `max deviation`。源码会从这个值开始逐级尝试 matching refinement。值越小，每轮修改更保守；值越大，更可能带来更明显改进但搜索成本更高。推荐：默认 `2`。"},
+    {"key": "refinement_maxdev_max", "label": u"Refine MaxDev Max", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"Refinement", "help": u"refinement 扫描的结束 `max deviation`。若与最小值相同，就只跑一个固定强度；若更大，源码会从最小值逐个递增尝试，直到该上限。推荐：默认与最小值同为 `2`；只有当你确认 refinement 改进不足时，再尝试扩到 `3-5`。"},
+    {"key": "deviation_limit", "label": u"Deviation Limit", "type": "combo", "choices": [("NodeThroughflow", u"NodeThroughflow"), ("EdgeFlow", u"EdgeFlow")], "section": u"Refinement", "help": u"决定 refinement 时偏差约束按节点 throughflow 还是按边流量来限制。`NodeThroughflow` 是默认且更常见的模式；`EdgeFlow` 会更直接限制单边变化，通常更保守。推荐：先保持 `NodeThroughflow`，只有在你想更强约束单边变化时再试 `EdgeFlow`。"},
+    {"key": "verbosity", "label": u"Verbosity", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"Refinement", "help": u"整体 satsuma 高层流程的日志级别。`1` 会打印 refinement 过程，`2+` 会看到更多 double-cover 与改进细节。推荐：默认 `2` 便于观察优化过程；批量跑任务时可降到 `1`。"},
+]
+
+
+SHARED_MAIN_CONFIG_KEYS = sorted(set([spec["key"] for spec in QUADWILD_FORM_FIELDS]).intersection(set([spec["key"] for spec in QFP_FORM_FIELDS])))
 
 
 class ProcessWorker(QtCore.QObject):
@@ -407,10 +487,21 @@ class ProcessWorker(QtCore.QObject):
 
         self.log_message.emit(u"[INFO] 输出工作目录: {0}".format(workspace))
 
+        staged_flow_config = os.path.join(workspace, "flow_solver_config.json")
+        staged_satsuma_config = os.path.join(workspace, "satsuma_solver_config.json")
+        write_text_file(staged_flow_config, self._settings["flow_solver_config_text"])
+        write_text_file(staged_satsuma_config, self._settings["satsuma_solver_config_text"])
+
         staged_quadwild_config = os.path.join(workspace, "quadwild_config.json")
         staged_qfp_config = os.path.join(workspace, "quad_from_patches_config.json")
-        write_text_file(staged_quadwild_config, self._settings["quadwild_config_text"])
-        write_text_file(staged_qfp_config, self._settings["quad_from_patches_config_text"])
+        quadwild_config_data = deep_copy_json_dict(self._settings["quadwild_config_data"])
+        qfp_config_data = deep_copy_json_dict(self._settings["quad_from_patches_config_data"])
+        quadwild_config_data["flow_config_filename"] = staged_flow_config
+        quadwild_config_data["satsuma_config_filename"] = staged_satsuma_config
+        qfp_config_data["flow_config_filename"] = staged_flow_config
+        qfp_config_data["satsuma_config_filename"] = staged_satsuma_config
+        write_text_file(staged_quadwild_config, json.dumps(quadwild_config_data, indent=2, ensure_ascii=False, sort_keys=False))
+        write_text_file(staged_qfp_config, json.dumps(qfp_config_data, indent=2, ensure_ascii=False, sort_keys=False))
 
         command_specs = []
 
@@ -482,8 +573,16 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.last_workspace = text_type("")
         self.job_name_manually_edited = False
         self._syncing_quadwild_input = False
+        self._syncing_shared_config = False
+        self._config_sender_map = {}
         self.quadwild_form_widgets = {}
         self.qfp_form_widgets = {}
+        self.flow_solver_form_widgets = {}
+        self.satsuma_form_widgets = {}
+        self.quadwild_json_preview = None
+        self.qfp_json_preview = None
+        self.flow_solver_json_preview = None
+        self.satsuma_solver_json_preview = None
         self.setWindowTitle(u"QuadWild Binary UI")
         self.resize(1380, 960)
         self.build_ui()
@@ -503,6 +602,7 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.tabs.addTab(self.build_general_tab(), u"总览")
         self.tabs.addTab(self.build_quadwild_tab(), u"QuadWild")
         self.tabs.addTab(self.build_qfp_tab(), u"Quad From Patches")
+        self.tabs.addTab(self.build_external_solver_tab(), u"外部求解器")
         self.tabs.addTab(self.build_execution_tab(), u"执行")
         root_layout.addWidget(self.tabs, 1)
 
@@ -702,6 +802,35 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.stats_json_edit.textChanged.connect(self.update_command_preview)
         return tab
 
+    def build_external_solver_tab(self):
+        tab = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(tab)
+
+        summary = QtWidgets.QLabel(u"这里配置 flow 与 satsuma 的外部求解器 JSON 内容。运行时 UI 会自动把这些配置写入任务目录，并回填到 quadwild / quad_from_patches 主配置中。")
+        summary.setWordWrap(True)
+        layout.addWidget(summary)
+
+        flow_group = self.build_config_group(
+            kind="flow_solver",
+            title=u"Flow Solver JSON 配置",
+            path_attr="flow_solver_config_path_edit",
+            load_title=u"选择 Flow Solver JSON 配置文件",
+            default_data=FLOW_SOLVER_DEFAULTS,
+            field_specs=FLOW_SOLVER_FORM_FIELDS
+        )
+        layout.addWidget(flow_group, 1)
+
+        satsuma_group = self.build_config_group(
+            kind="satsuma_solver",
+            title=u"Satsuma Solver JSON 配置",
+            path_attr="satsuma_solver_config_path_edit",
+            load_title=u"选择 Satsuma Solver JSON 配置文件",
+            default_data=SATSUMA_DEFAULTS,
+            field_specs=SATSUMA_FORM_FIELDS
+        )
+        layout.addWidget(satsuma_group, 1)
+        return tab
+
     def build_execution_tab(self):
         tab = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(tab)
@@ -732,6 +861,7 @@ class QuadWildWindow(QtWidgets.QMainWindow):
 
         path_layout = QtWidgets.QHBoxLayout()
         path_edit = QtWidgets.QLineEdit()
+        path_edit.textChanged.connect(self.on_config_changed)
         setattr(self, path_attr, path_edit)
         load_button = QtWidgets.QPushButton(u"从文件加载")
         save_button = QtWidgets.QPushButton(u"保存到文件")
@@ -752,6 +882,7 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             widget = self.create_config_field_widget(kind, spec)
             self.apply_field_help(widget, spec)
             widget_map[spec["key"]] = widget
+            self.register_config_widget(kind, spec["key"], widget)
             section_name = spec.get("section", u"未分组")
             if section_name not in section_forms:
                 section_group = QtWidgets.QGroupBox(section_name)
@@ -768,8 +899,12 @@ class QuadWildWindow(QtWidgets.QMainWindow):
 
         if kind == "quadwild":
             self.quadwild_form_widgets = widget_map
-        else:
+        elif kind == "qfp":
             self.qfp_form_widgets = widget_map
+        elif kind == "flow_solver":
+            self.flow_solver_form_widgets = widget_map
+        else:
+            self.satsuma_form_widgets = widget_map
 
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
@@ -783,8 +918,12 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         splitter.setStretchFactor(1, 1)
         if kind == "quadwild":
             self.quadwild_json_preview = preview
-        else:
+        elif kind == "qfp":
             self.qfp_json_preview = preview
+        elif kind == "flow_solver":
+            self.flow_solver_json_preview = preview
+        else:
+            self.satsuma_solver_json_preview = preview
 
         group_layout.addWidget(splitter, 1)
 
@@ -853,6 +992,11 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             widget._line_edit.setToolTip(help_text)
         if hasattr(widget, "_browse_button"):
             widget._browse_button.setToolTip(help_text)
+
+    def register_config_widget(self, kind, key, widget):
+        self._config_sender_map[widget] = (kind, key)
+        if hasattr(widget, "_line_edit"):
+            self._config_sender_map[widget._line_edit] = (kind, key)
 
     def browse_row(self, edit_widget, button_widget):
         layout = QtWidgets.QHBoxLayout()
@@ -935,34 +1079,56 @@ class QuadWildWindow(QtWidgets.QMainWindow):
     def config_field_specs(self, kind):
         if kind == "quadwild":
             return QUADWILD_FORM_FIELDS
-        return QFP_FORM_FIELDS
+        if kind == "qfp":
+            return QFP_FORM_FIELDS
+        if kind == "flow_solver":
+            return FLOW_SOLVER_FORM_FIELDS
+        return SATSUMA_FORM_FIELDS
 
     def config_widgets(self, kind):
         if kind == "quadwild":
             return self.quadwild_form_widgets
-        return self.qfp_form_widgets
+        if kind == "qfp":
+            return self.qfp_form_widgets
+        if kind == "flow_solver":
+            return self.flow_solver_form_widgets
+        return self.satsuma_form_widgets
 
     def config_defaults(self, kind):
         if kind == "quadwild":
             return dict(QUADWILD_DEFAULTS)
-        return dict(QFP_DEFAULTS)
+        if kind == "qfp":
+            return dict(QFP_DEFAULTS)
+        if kind == "flow_solver":
+            return deep_copy_json_dict(FLOW_SOLVER_DEFAULTS)
+        return deep_copy_json_dict(SATSUMA_DEFAULTS)
 
     def config_path_edit(self, kind):
         if kind == "quadwild":
             return self.quadwild_config_path_edit
-        return self.qfp_config_path_edit
+        if kind == "qfp":
+            return self.qfp_config_path_edit
+        if kind == "flow_solver":
+            return self.flow_solver_config_path_edit
+        return self.satsuma_solver_config_path_edit
 
     def config_preview_widget(self, kind):
         if kind == "quadwild":
             return self.quadwild_json_preview
-        return self.qfp_json_preview
+        if kind == "qfp":
+            return self.qfp_json_preview
+        if kind == "flow_solver":
+            return self.flow_solver_json_preview
+        return self.satsuma_solver_json_preview
 
     def load_config_data_into_form(self, kind, data):
-        defaults = self.config_defaults(kind)
+        defaults = deep_copy_json_dict(self.config_defaults(kind))
         defaults.update(data or {})
         widgets = self.config_widgets(kind)
         for spec in self.config_field_specs(kind):
-            self.set_config_widget_value(widgets[spec["key"]], spec["type"], defaults.get(spec["key"]))
+            self.set_config_widget_value(widgets[spec["key"]], spec["type"], nested_get(defaults, spec["key"]))
+        if kind in ("quadwild", "qfp"):
+            self.sync_all_shared_main_fields(kind)
         self.refresh_json_previews()
         self.update_command_preview()
 
@@ -970,23 +1136,82 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         data = {}
         widgets = self.config_widgets(kind)
         for spec in self.config_field_specs(kind):
-            data[spec["key"]] = self.config_widget_value(widgets[spec["key"]], spec["type"])
+            nested_set(data, spec["key"], self.config_widget_value(widgets[spec["key"]], spec["type"]))
         return data
 
     def collect_config_text(self, kind):
         return json.dumps(self.collect_config_data(kind), indent=2, ensure_ascii=False, sort_keys=False)
 
+    def external_config_reference(self, kind):
+        if kind == "flow_solver":
+            return ensure_text(self.flow_solver_config_path_edit.text()).strip() or default_flow_solver_config()
+        return ensure_text(self.satsuma_solver_config_path_edit.text()).strip() or default_satsuma_config()
+
+    def collect_main_config_data(self, kind):
+        data = self.collect_config_data(kind)
+        data["flow_config_filename"] = self.external_config_reference("flow_solver")
+        data["satsuma_config_filename"] = self.external_config_reference("satsuma_solver")
+        return data
+
+    def load_external_configs_from_main_data(self, data, base_dir):
+        flow_ref = ensure_text(data.get("flow_config_filename", "")).strip()
+        satsuma_ref = ensure_text(data.get("satsuma_config_filename", "")).strip()
+        if flow_ref:
+            self.flow_solver_config_path_edit.setText(flow_ref)
+            flow_path = resolve_config_reference(flow_ref, base_dir)
+            if os.path.isfile(flow_path):
+                self.load_config_data_into_form("flow_solver", read_json_file(flow_path, FLOW_SOLVER_DEFAULTS))
+        if satsuma_ref:
+            self.satsuma_solver_config_path_edit.setText(satsuma_ref)
+            satsuma_path = resolve_config_reference(satsuma_ref, base_dir)
+            if os.path.isfile(satsuma_path):
+                self.load_config_data_into_form("satsuma_solver", read_json_file(satsuma_path, SATSUMA_DEFAULTS))
+
     def refresh_json_previews(self):
-        for kind in ("quadwild", "qfp"):
+        for kind in ("quadwild", "qfp", "flow_solver", "satsuma_solver"):
             preview = self.config_preview_widget(kind)
+            if preview is None:
+                continue
             try:
-                preview.setPlainText(self.collect_config_text(kind))
+                if kind in ("quadwild", "qfp"):
+                    preview.setPlainText(json.dumps(self.collect_main_config_data(kind), indent=2, ensure_ascii=False, sort_keys=False))
+                else:
+                    preview.setPlainText(self.collect_config_text(kind))
             except Exception as exc:
                 preview.setPlainText(u"[配置错误]\n{0}".format(ensure_text(exc)))
 
     def on_config_changed(self, *_args):
+        sender = self.sender()
+        if (not self._syncing_shared_config) and sender in self._config_sender_map:
+            kind, key = self._config_sender_map[sender]
+            if kind in ("quadwild", "qfp") and key in SHARED_MAIN_CONFIG_KEYS:
+                self.sync_shared_main_field(kind, key)
         self.refresh_json_previews()
         self.update_command_preview()
+
+    def sync_shared_main_field(self, source_kind, key):
+        target_kind = "qfp" if source_kind == "quadwild" else "quadwild"
+        self._syncing_shared_config = True
+        try:
+            source_widget = self.config_widgets(source_kind)[key]
+            target_widget = self.config_widgets(target_kind)[key]
+            field_type = None
+            for spec in self.config_field_specs(source_kind):
+                if spec["key"] == key:
+                    field_type = spec["type"]
+                    break
+            if field_type is None:
+                return
+            value = self.config_widget_value(source_widget, field_type)
+            target_value = self.config_widget_value(target_widget, field_type)
+            if value != target_value:
+                self.set_config_widget_value(target_widget, field_type, value)
+        finally:
+            self._syncing_shared_config = False
+
+    def sync_all_shared_main_fields(self, source_kind):
+        for key in SHARED_MAIN_CONFIG_KEYS:
+            self.sync_shared_main_field(source_kind, key)
 
     def load_config_from_file(self, kind, title):
         path_edit = self.config_path_edit(kind)
@@ -996,6 +1221,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         try:
             data = read_json_file(path, self.config_defaults(kind))
             path_edit.setText(path)
+            if kind in ("quadwild", "qfp"):
+                self.load_external_configs_from_main_data(data, os.path.dirname(path))
             self.load_config_data_into_form(kind, data)
             self.append_log(u"[INFO] 已加载配置文件: {0}".format(path))
         except Exception as exc:
@@ -1004,16 +1231,26 @@ class QuadWildWindow(QtWidgets.QMainWindow):
     def save_config_to_file(self, kind):
         path_edit = self.config_path_edit(kind)
         current_path = ensure_text(path_edit.text()).strip()
+        default_target = current_path or default_prep_config()
+        if kind == "qfp":
+            default_target = current_path or default_main_config()
+        elif kind == "flow_solver":
+            default_target = current_path or default_flow_solver_config()
+        elif kind == "satsuma_solver":
+            default_target = current_path or default_satsuma_config()
         path, _selected = QtWidgets.QFileDialog.getSaveFileName(
             self,
             u"保存 JSON 配置",
-            current_path or default_prep_config(),
+            default_target,
             u"JSON Files (*.json);;All Files (*)"
         )
         if not path:
             return
         try:
-            write_json_file(path, self.collect_config_data(kind))
+            if kind in ("quadwild", "qfp"):
+                write_json_file(path, self.collect_main_config_data(kind))
+            else:
+                write_json_file(path, self.collect_config_data(kind))
             path_edit.setText(path)
             self.append_log(u"[INFO] 已保存配置文件: {0}".format(path))
         except Exception as exc:
@@ -1071,6 +1308,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             self.quadwild_config_path_edit.setText(default_prep_config())
         if not self.qfp_config_path_edit.text().strip():
             self.qfp_config_path_edit.setText(default_main_config())
+        if not self.flow_solver_config_path_edit.text().strip():
+            self.flow_solver_config_path_edit.setText(default_flow_solver_config())
+        if not self.satsuma_solver_config_path_edit.text().strip():
+            self.satsuma_solver_config_path_edit.setText(default_satsuma_config())
         if not self.job_name_edit.text().strip():
             self.regenerate_job_name()
 
@@ -1092,8 +1333,12 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "quad_from_patches_extra_args": text_type(""),
             "quadwild_config_path": default_prep_config(),
             "quad_from_patches_config_path": default_main_config(),
+            "flow_solver_config_path": default_flow_solver_config(),
+            "satsuma_solver_config_path": default_satsuma_config(),
             "quadwild_config_data": dict(QUADWILD_DEFAULTS),
-            "quad_from_patches_config_data": dict(QFP_DEFAULTS)
+            "quad_from_patches_config_data": dict(QFP_DEFAULTS),
+            "flow_solver_config_data": deep_copy_json_dict(FLOW_SOLVER_DEFAULTS),
+            "satsuma_solver_config_data": deep_copy_json_dict(SATSUMA_DEFAULTS)
         }
 
     def migrate_legacy_config_data(self, data, text_key, default_values):
@@ -1138,6 +1383,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.stats_json_edit.setText(ensure_text(data.get("stats_json", "")))
         self.quadwild_config_path_edit.setText(ensure_text(data.get("quadwild_config_path", "")))
         self.qfp_config_path_edit.setText(ensure_text(data.get("quad_from_patches_config_path", "")))
+        self.flow_solver_config_path_edit.setText(ensure_text(data.get("flow_solver_config_path", "")))
+        self.satsuma_solver_config_path_edit.setText(ensure_text(data.get("satsuma_solver_config_path", "")))
 
         quadwild_config_data = data.get("quadwild_config_data")
         if not isinstance(quadwild_config_data, dict):
@@ -1145,9 +1392,17 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         qfp_config_data = data.get("quad_from_patches_config_data")
         if not isinstance(qfp_config_data, dict):
             qfp_config_data = self.migrate_legacy_config_data(data, "quad_from_patches_config_text", QFP_DEFAULTS)
+        flow_solver_config_data = data.get("flow_solver_config_data")
+        if not isinstance(flow_solver_config_data, dict):
+            flow_solver_config_data = deep_copy_json_dict(FLOW_SOLVER_DEFAULTS)
+        satsuma_solver_config_data = data.get("satsuma_solver_config_data")
+        if not isinstance(satsuma_solver_config_data, dict):
+            satsuma_solver_config_data = deep_copy_json_dict(SATSUMA_DEFAULTS)
 
         self.load_config_data_into_form("quadwild", quadwild_config_data)
         self.load_config_data_into_form("qfp", qfp_config_data)
+        self.load_config_data_into_form("flow_solver", flow_solver_config_data)
+        self.load_config_data_into_form("satsuma_solver", satsuma_solver_config_data)
 
         try:
             self.qfp_num_spin.setValue(int(data.get("quad_from_patches_num", 0)))
@@ -1184,8 +1439,12 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.stats_json_edit.setText(defaults["stats_json"])
         self.quadwild_config_path_edit.setText(defaults["quadwild_config_path"])
         self.qfp_config_path_edit.setText(defaults["quad_from_patches_config_path"])
+        self.flow_solver_config_path_edit.setText(defaults["flow_solver_config_path"])
+        self.satsuma_solver_config_path_edit.setText(defaults["satsuma_solver_config_path"])
         self.load_config_data_into_form("quadwild", defaults["quadwild_config_data"])
         self.load_config_data_into_form("qfp", defaults["quad_from_patches_config_data"])
+        self.load_config_data_into_form("flow_solver", defaults["flow_solver_config_data"])
+        self.load_config_data_into_form("satsuma_solver", defaults["satsuma_solver_config_data"])
         self.qfp_num_spin.setValue(int(defaults["quad_from_patches_num"]))
         self.job_name_manually_edited = False
         self.regenerate_job_name()
@@ -1250,8 +1509,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
 
     def collect_settings(self):
         workflow = ensure_text(self.workflow_combo.currentData())
-        quadwild_config_data = self.collect_config_data("quadwild")
-        qfp_config_data = self.collect_config_data("qfp")
+        quadwild_config_data = self.collect_main_config_data("quadwild")
+        qfp_config_data = self.collect_main_config_data("qfp")
+        flow_solver_config_data = self.collect_config_data("flow_solver")
+        satsuma_solver_config_data = self.collect_config_data("satsuma_solver")
         return {
             "workflow": workflow,
             "output_root": ensure_text(self.output_root_edit.text()).strip(),
@@ -1271,10 +1532,16 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "quad_from_patches_extra_args": ensure_text(self.qfp_extra_args_edit.text()).strip(),
             "quadwild_config_path": ensure_text(self.quadwild_config_path_edit.text()).strip(),
             "quad_from_patches_config_path": ensure_text(self.qfp_config_path_edit.text()).strip(),
+            "flow_solver_config_path": ensure_text(self.flow_solver_config_path_edit.text()).strip(),
+            "satsuma_solver_config_path": ensure_text(self.satsuma_solver_config_path_edit.text()).strip(),
             "quadwild_config_data": quadwild_config_data,
             "quad_from_patches_config_data": qfp_config_data,
+            "flow_solver_config_data": flow_solver_config_data,
+            "satsuma_solver_config_data": satsuma_solver_config_data,
             "quadwild_config_text": json.dumps(quadwild_config_data, indent=2, ensure_ascii=False, sort_keys=False),
             "quad_from_patches_config_text": json.dumps(qfp_config_data, indent=2, ensure_ascii=False, sort_keys=False),
+            "flow_solver_config_text": json.dumps(flow_solver_config_data, indent=2, ensure_ascii=False, sort_keys=False),
+            "satsuma_solver_config_text": json.dumps(satsuma_solver_config_data, indent=2, ensure_ascii=False, sort_keys=False),
             "process_cwd": repo_root()
         }
 
@@ -1335,6 +1602,12 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         lines.append(u"")
         lines.append(u"[quad_from_patches_config.json]")
         lines.append(settings["quad_from_patches_config_text"][:1200] or u"<空>")
+        lines.append(u"")
+        lines.append(u"[flow_solver_config.json]")
+        lines.append(settings["flow_solver_config_text"][:1200] or u"<空>")
+        lines.append(u"")
+        lines.append(u"[satsuma_solver_config.json]")
+        lines.append(settings["satsuma_solver_config_text"][:1200] or u"<空>")
         return lines
 
     def update_command_preview(self):
