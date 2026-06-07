@@ -388,6 +388,7 @@ int actual_main(int argc, char *argv[])
       std::ofstream json_file{json_filename};
       json_file << std::setw(4) << json;
     }
+    std::cout << "*** quad_from_patches finished ***" << std::endl;
     return 0;
 }
 
@@ -437,7 +438,7 @@ void loadSetupFile(const std::string& path, QuadRetopology::Parameters& paramete
     assignBoolIfPresent(json, "hardParityConstraint", parameters.hardParityConstraint);
     assignIfPresent(json, "scaleFact", scaleFactor);
     assignIfPresent(json, "fixedChartClusters", fixedChartClusters);
-    assignIfPresent(json, "useFlowSolver", parameters.useFlowSolver);
+    assignBoolIfPresent(json, "useFlowSolver", parameters.useFlowSolver);
     assignIfPresent(json, "flow_config_filename", parameters.flow_config_filename);
     assignIfPresent(json, "satsuma_config_filename", parameters.satsuma_config_filename);
 
@@ -518,7 +519,7 @@ int main(int argc, char* argv[])
     try {
         return actual_main(argc, argv);
     }
-    catch (std::runtime_error& e) {
+    catch (const std::exception& e) {
         std::cerr << "fatal error: " << e.what() << std::endl;
         return 1;
     }

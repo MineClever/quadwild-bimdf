@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
     try {
         return actual_main(argc, argv);
     }
-    catch (std::runtime_error& e) {
+    catch (const std::exception& e) {
         std::cerr << "fatal error: " << e.what() << std::endl;
         return 1;
     }

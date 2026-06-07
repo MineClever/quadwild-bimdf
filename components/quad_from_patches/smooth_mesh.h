@@ -1022,7 +1022,7 @@ void MultiCostraintSmooth(PolyMeshType &PolyM,
                        quad_corner,quad_face_partition,AvEdge,
                        TriProjBase,PolyProjBase);
 
-    std::cout<<"*** Done ***"<<std::endl;
+    std::cout<<"*** Projection basis ready ***"<<std::endl;
 
     std::vector<bool> BlockedV(PolyM.vert.size(),false);
 
@@ -1033,6 +1033,7 @@ void MultiCostraintSmooth(PolyMeshType &PolyM,
 
     for (size_t s=0;s<step_num;s++)
     {
+        std::cout<<"*** Smoothing iteration "<<(s+1)<<"/"<<step_num<<" ***"<<std::endl;
         //std::cout<<"Smoooth Feature step: "<<s<<std::endl;
         //int t0=clock();
         SmoothSharpFeatures<PolyMeshType,TriMeshType>(PolyM,PolyProjBase,EdgeM,Damp,BlockedV);
@@ -1048,6 +1049,8 @@ void MultiCostraintSmooth(PolyMeshType &PolyM,
         //        int t2=clock();
         //        std::cout<<"Concluded Smoothing step TFeat:"<<t1-t0<<" TInternal:"<<t2-t1<<std::endl;
     }
+
+    std::cout<<"*** Smoothing complete ***"<<std::endl;
 
 }
 

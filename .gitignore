@@ -46,3 +46,4 @@ CMakeLists.txt.user
 /.vs
 ui_runs/
 *.pyc
+tmp_*.log

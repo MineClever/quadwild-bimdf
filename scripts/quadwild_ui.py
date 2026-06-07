@@ -91,11 +91,47 @@ def write_json_file(path, data):
     write_text_file(path, json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False))
 
 
-def default_release_binary(filename):
-    path = os.path.join(repo_root(), "release", "windows", filename)
-    if os.path.exists(path):
-        return path
-    return text_type("")
+def binary_candidates(filename):
+    root = repo_root()
+    return [
+        os.path.join(root, "build", "windows-clangcl", "Build", "bin", "Release", filename),
+        os.path.join(root, "build", "windows-clangcl", "Build", "bin", filename),
+        os.path.join(root, "build", "windows-default", "Build", "bin", "Release", filename),
+        os.path.join(root, "build", "windows-default", "Build", "bin", filename),
+        os.path.join(root, "release", "windows", filename),
+    ]
+
+
+def preferred_repo_binary(filename):
+    existing = [path for path in binary_candidates(filename) if os.path.isfile(path)]
+    if not existing:
+        return text_type("")
+    existing.sort(key=lambda path: os.path.getmtime(path), reverse=True)
+    return existing[0]
+
+
+def normalize_binary_path(configured_path, filename):
+    configured_path = ensure_text(configured_path).strip()
+    root = repo_root()
+    preferred = preferred_repo_binary(filename)
+
+    if configured_path:
+        normalized = os.path.abspath(configured_path)
+        managed_candidates = [os.path.abspath(path) for path in binary_candidates(filename)]
+        managed_prefixes = [
+            os.path.abspath(os.path.join(root, "release", "windows")),
+            os.path.abspath(os.path.join(root, "build", "windows-clangcl")),
+            os.path.abspath(os.path.join(root, "build", "windows-default")),
+        ]
+        under_managed_tree = any(normalized.startswith(prefix + os.sep) or normalized == prefix for prefix in managed_prefixes)
+        if os.path.isfile(normalized) and not under_managed_tree:
+            return normalized
+        if normalized in managed_candidates and preferred:
+            return preferred
+        if os.path.isfile(normalized):
+            return normalized
+
+    return preferred
 
 
 def default_prep_config():
@@ -239,7 +275,7 @@ QUADWILD_FORM_FIELDS = [
     {"key": "quadrangulationFixedSmoothingIterations", "label": u"Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000},
     {"key": "quadrangulationNonFixedSmoothingIterations", "label": u"Non-Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000},
     {"key": "feasibilityFix", "label": u"Feasibility Fix", "type": "bool"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "int", "minimum": 0, "maximum": 10},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool"},
     {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file"},
     {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file"},
 ]
@@ -266,7 +302,7 @@ QFP_FORM_FIELDS = [
     {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool"},
     {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool"},
     {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "int", "minimum": 0, "maximum": 10},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool"},
     {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file"},
     {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file"},
 ]
@@ -980,9 +1016,9 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         if not self.output_root_edit.text().strip():
             self.output_root_edit.setText(default_output_root())
         if not self.quadwild_binary_edit.text().strip():
-            self.quadwild_binary_edit.setText(default_release_binary("quadwild.exe"))
+            self.quadwild_binary_edit.setText(preferred_repo_binary("quadwild.exe"))
         if not self.qfp_binary_edit.text().strip():
-            self.qfp_binary_edit.setText(default_release_binary("quad_from_patches.exe"))
+            self.qfp_binary_edit.setText(preferred_repo_binary("quad_from_patches.exe"))
         if not self.quadwild_config_path_edit.text().strip():
             self.quadwild_config_path_edit.setText(default_prep_config())
         if not self.qfp_config_path_edit.text().strip():
@@ -995,8 +1031,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "workflow": "full_pipeline",
             "output_root": default_output_root(),
             "job_name": text_type(""),
-            "quadwild_binary": default_release_binary("quadwild.exe"),
-            "quad_from_patches_binary": default_release_binary("quad_from_patches.exe"),
+            "quadwild_binary": preferred_repo_binary("quadwild.exe"),
+            "quad_from_patches_binary": preferred_repo_binary("quad_from_patches.exe"),
             "quadwild_input_mesh": text_type(""),
             "quad_from_patches_input_mesh": text_type(""),
             "quadwild_stop_step": "3",
@@ -1172,8 +1208,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
             "workflow": workflow,
             "output_root": ensure_text(self.output_root_edit.text()).strip(),
             "job_name": ensure_text(self.job_name_edit.text()).strip() or generate_job_name(workflow, self.current_primary_input_path()),
-            "quadwild_binary": ensure_text(self.quadwild_binary_edit.text()).strip(),
-            "quad_from_patches_binary": ensure_text(self.qfp_binary_edit.text()).strip(),
+            "quadwild_binary_requested": ensure_text(self.quadwild_binary_edit.text()).strip(),
+            "quad_from_patches_binary_requested": ensure_text(self.qfp_binary_edit.text()).strip(),
+            "quadwild_binary": normalize_binary_path(self.quadwild_binary_edit.text(), "quadwild.exe"),
+            "quad_from_patches_binary": normalize_binary_path(self.qfp_binary_edit.text(), "quad_from_patches.exe"),
             "quadwild_input_mesh": ensure_text(self.quadwild_input_edit.text()).strip(),
             "quad_from_patches_input_mesh": ensure_text(self.qfp_input_edit.text()).strip(),
             "quadwild_stop_step": ensure_text(self.stop_step_combo.currentData()),
@@ -1289,6 +1327,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.set_running(True)
         self.update_runtime_status(u"准备中", u"初始化后台任务")
         self.append_log(u"[INFO] 准备开始执行。")
+        if settings["workflow"] in ("full_pipeline", "quadwild_only") and settings["quadwild_binary"] != settings["quadwild_binary_requested"]:
+            self.append_log(u"[INFO] quadwild 二进制已自动切换为最新可用版本: {0}".format(settings["quadwild_binary"]))
+        if settings["workflow"] in ("full_pipeline", "quad_from_patches_only") and settings["quad_from_patches_binary"] != settings["quad_from_patches_binary_requested"]:
+            self.append_log(u"[INFO] quad_from_patches 二进制已自动切换为最新可用版本: {0}".format(settings["quad_from_patches_binary"]))
 
         self.worker_thread = QtCore.QThread(self)
         self.worker = ProcessWorker(settings)

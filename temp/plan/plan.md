@@ -28,6 +28,10 @@
 | `ui_serialized_config_assessment` | UI 序列化配置评估 | Done | M4 - 收尾 | `configurable_pipeline_and_ui_tabs` | [ui_serialized_config_assessment_plan.md](./ui_serialized_config_assessment_plan.md) | [ui_serialized_config_assessment_done_plan.md](./ui_serialized_config_assessment_done_plan.md) |
 | `json_config_system_migration` | 全量 JSON 配置系统迁移 | Done | M4 - 收尾 | `configurable_pipeline_and_ui_tabs`, `ui_serialized_config_assessment` | [json_config_system_migration_plan.md](./json_config_system_migration_plan.md) | [json_config_system_migration_done_plan.md](./json_config_system_migration_done_plan.md) |
 | `ui_json_form_parameterization` | UI 参数表单化与总览输入同步 | Done | M4 - 收尾 | `json_config_system_migration` | [ui_json_form_parameterization_plan.md](./ui_json_form_parameterization_plan.md) | [ui_json_form_parameterization_done_plan.md](./ui_json_form_parameterization_done_plan.md) |
+| `json_bool_parser_fix` | JSON 布尔字段解析与 UI 二进制路径修复 | Done | M4 - 收尾 | `json_config_system_migration`, `ui_json_form_parameterization` | [json_bool_parser_fix_plan.md](./json_bool_parser_fix_plan.md) | [json_bool_parser_fix_done_plan.md](./json_bool_parser_fix_done_plan.md) |
+| `tracing_invalid_map_key_fix` | Tracing 阶段 invalid map key 异常隔离修复 | Done | M4 - 收尾 | `json_bool_parser_fix` | [tracing_invalid_map_key_fix_plan.md](./tracing_invalid_map_key_fix_plan.md) | [tracing_invalid_map_key_fix_done_plan.md](./tracing_invalid_map_key_fix_done_plan.md) |
+| `qfp_smoothing_progress_log_fix` | quad_from_patches smoothing 日志误导修复 | Done | M4 - 收尾 | `json_bool_parser_fix` | [qfp_smoothing_progress_log_fix_plan.md](./qfp_smoothing_progress_log_fix_plan.md) | [qfp_smoothing_progress_log_fix_done_plan.md](./qfp_smoothing_progress_log_fix_done_plan.md) |
+| `submodule_edit_constraint` | 禁止修改 submodule 约束落地 | Done | M4 - 收尾 | `tracing_invalid_map_key_fix` | [submodule_edit_constraint_plan.md](./submodule_edit_constraint_plan.md) | [submodule_edit_constraint_done_plan.md](./submodule_edit_constraint_done_plan.md) |
 
 ## 依赖说明
 新任务在开始实质执行前必须先登记到该表。如果任务依赖其他任务，必须在这里和任务计划文件中同时记录。

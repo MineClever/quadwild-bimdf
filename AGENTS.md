@@ -34,3 +34,5 @@ Use `git clone --recursive` because this repository depends on bundled submodule
 
 ## Agent Workflow Constraints
 All repository work must be tracked in `temp/plan/` using the milestone planning system. Before starting any non-trivial task, create or update `temp/plan/<task>_plan.md` and `temp/plan/<task>_done_plan.md`, then sync summary status back to `temp/plan/plan.md`. Plan documents should default to Chinese for headings, status notes, and milestone details unless a task specifically requires English. Use explicit milestone phases such as `M1 - Design`, `M2 - Implementation`, `M3 - Validation`, and `M4 - Closeout`; do not execute work without an active tracked plan entry.
+
+Treat bundled submodules under `libs/` as read-only by default. Do not modify files inside a submodule worktree unless the user explicitly asks for a submodule change. If a fix appears to require editing a submodule, stop, surface that constraint, and get explicit approval before changing it.

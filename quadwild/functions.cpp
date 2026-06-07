@@ -275,7 +275,7 @@ inline bool loadConfigFile(const std::string& filename, Parameters& parameters)
     assign_if_present(json, "quadrangulationFixedSmoothingIterations", parameters.quadrangulationParameters.quadrangulationFixedSmoothingIterations);
     assign_if_present(json, "quadrangulationNonFixedSmoothingIterations", parameters.quadrangulationParameters.quadrangulationNonFixedSmoothingIterations);
     assign_bool_if_present(json, "feasibilityFix", parameters.quadrangulationParameters.feasibilityFix);
-    assign_if_present(json, "useFlowSolver", parameters.quadrangulationParameters.useFlowSolver);
+    assign_bool_if_present(json, "useFlowSolver", parameters.quadrangulationParameters.useFlowSolver);
     assign_if_present(json, "flow_config_filename", parameters.quadrangulationParameters.flow_config_filename);
     assign_if_present(json, "satsuma_config_filename", parameters.quadrangulationParameters.satsuma_config_filename);
 
