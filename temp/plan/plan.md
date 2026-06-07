@@ -27,6 +27,7 @@
 | `configurable_pipeline_and_ui_tabs` | 流水线可配置化与 UI Tab 重构 | Done | M4 - 收尾 | `pyside2_binary_ui` | [configurable_pipeline_and_ui_tabs_plan.md](./configurable_pipeline_and_ui_tabs_plan.md) | [configurable_pipeline_and_ui_tabs_done_plan.md](./configurable_pipeline_and_ui_tabs_done_plan.md) |
 | `ui_serialized_config_assessment` | UI 序列化配置评估 | Done | M4 - 收尾 | `configurable_pipeline_and_ui_tabs` | [ui_serialized_config_assessment_plan.md](./ui_serialized_config_assessment_plan.md) | [ui_serialized_config_assessment_done_plan.md](./ui_serialized_config_assessment_done_plan.md) |
 | `json_config_system_migration` | 全量 JSON 配置系统迁移 | Done | M4 - 收尾 | `configurable_pipeline_and_ui_tabs`, `ui_serialized_config_assessment` | [json_config_system_migration_plan.md](./json_config_system_migration_plan.md) | [json_config_system_migration_done_plan.md](./json_config_system_migration_done_plan.md) |
+| `ui_json_form_parameterization` | UI 参数表单化与总览输入同步 | Done | M4 - 收尾 | `json_config_system_migration` | [ui_json_form_parameterization_plan.md](./ui_json_form_parameterization_plan.md) | [ui_json_form_parameterization_done_plan.md](./ui_json_form_parameterization_done_plan.md) |
 
 ## 依赖说明
 新任务在开始实质执行前必须先登记到该表。如果任务依赖其他任务，必须在这里和任务计划文件中同时记录。
