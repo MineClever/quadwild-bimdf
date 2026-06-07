@@ -36,6 +36,11 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 find_package(Threads)
 find_package(Gurobi QUIET)
 
+option(QUADWILD_ENABLE_OPENMP_SMOOTHING "Enable OpenMP for safe smoothing loops in quad_from_patches" OFF)
+if(QUADWILD_ENABLE_OPENMP_SMOOTHING)
+    find_package(OpenMP REQUIRED)
+endif()
+
 add_library(Eigen3::Eigen INTERFACE IMPORTED)
 target_include_directories(Eigen3::Eigen INTERFACE "libs/eigen")
 

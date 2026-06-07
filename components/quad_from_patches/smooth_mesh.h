@@ -35,6 +35,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vcg/space/index/grid_static_ptr.h>
 //#include "field_smoother.h"
 
+#ifdef QUADWILD_OPENMP_SMOOTHING
+#define QUADWILD_OMP_PARALLEL_FOR _Pragma("omp parallel for schedule(static)")
+#else
+#define QUADWILD_OMP_PARALLEL_FOR
+#endif
+
 ///* ----- Triangle mesh ----- */
 
 class BasicVertex;
@@ -850,6 +856,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
     LaplacianPos(PolyM,Damp,TargetPos,true);
 
     //set value
+    QUADWILD_OMP_PARALLEL_FOR
     for (size_t i=0;i<PolyM.vert.size();i++)
     {
         if (PolyProjBase.VertProjType[i]!=ProjSharp)continue;
@@ -858,6 +865,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
     }
 
 
+    QUADWILD_OMP_PARALLEL_FOR
     for (size_t i=0;i<PolyM.vert.size();i++)
     {
         if (PolyProjBase.VertProjType[i]!=ProjSharp)continue;
@@ -915,6 +923,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
     }
     //    int t1=clock();
     //smooth
+    QUADWILD_OMP_PARALLEL_FOR
     for (size_t i=0;i<PolyM.vert.size();i++)
     {
         if (BlockedV[i])continue;
@@ -927,6 +936,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
     for (size_t i=0;i<back_proj_steps;i++)
     {
         BackProjectStepPositions(PolyM,TriM,TriProjBase,PolyProjBase,TargetPosBackProj);
+        QUADWILD_OMP_PARALLEL_FOR
         for (size_t i=0;i<PolyM.vert.size();i++)
         {
             if (BlockedV[i])continue;
@@ -936,6 +946,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
     }
 
     //    int t3=clock();
+    QUADWILD_OMP_PARALLEL_FOR
     for (size_t i=0;i<PolyM.vert.size();i++)
     {
         if (BlockedV[i])continue;
