@@ -249,62 +249,62 @@ QFP_DEFAULTS = read_json_file(default_main_config(), {})
 
 
 QUADWILD_FORM_FIELDS = [
-    {"key": "do_remesh", "label": u"执行重网格", "type": "bool"},
-    {"key": "sharp_feature_thr", "label": u"锐边阈值", "type": "double", "decimals": 4, "minimum": -99999.0, "maximum": 99999.0},
-    {"key": "alpha", "label": u"Alpha", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0},
-    {"key": "scaleFact", "label": u"Scale Factor", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0},
-    {"key": "fixedChartClusters", "label": u"Fixed Chart Clusters", "type": "int", "minimum": 0, "maximum": 1000000},
-    {"key": "ilpMethod", "label": u"ILP 方法", "type": "combo", "choices": [(0, u"ABS"), (1, u"Least Squares")]},
-    {"key": "timeLimit", "label": u"Time Limit", "type": "double", "decimals": 3, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "gapLimit", "label": u"Gap Limit", "type": "double", "decimals": 9, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "minimumGap", "label": u"Minimum Gap", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "callbackTimeLimit", "label": u"Callback Time Limit", "type": "float_list"},
-    {"key": "callbackGapLimit", "label": u"Callback Gap Limit", "type": "float_list"},
-    {"key": "isometry", "label": u"Isometry", "type": "bool"},
-    {"key": "regularityQuadrilaterals", "label": u"Quadrilateral Regularity", "type": "bool"},
-    {"key": "regularityNonQuadrilaterals", "label": u"Non-Quad Regularity", "type": "bool"},
-    {"key": "regularityNonQuadrilateralsWeight", "label": u"Non-Quad Regularity Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "alignSingularities", "label": u"Align Singularities", "type": "bool"},
-    {"key": "alignSingularitiesWeight", "label": u"Align Singularities Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "repeatLosingConstraintsIterations", "label": u"Repeat Losing Iterations", "type": "bool"},
-    {"key": "repeatLosingConstraintsQuads", "label": u"Repeat Losing Quads", "type": "bool"},
-    {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool"},
-    {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool"},
-    {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool"},
-    {"key": "chartSmoothingIterations", "label": u"Chart Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000},
-    {"key": "quadrangulationFixedSmoothingIterations", "label": u"Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000},
-    {"key": "quadrangulationNonFixedSmoothingIterations", "label": u"Non-Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000},
-    {"key": "feasibilityFix", "label": u"Feasibility Fix", "type": "bool"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool"},
-    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file"},
-    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file"},
+    {"key": "do_remesh", "label": u"执行重网格", "type": "bool", "section": u"预处理与场", "help": u"仅对 quadwild 生效。开启后先做重网格、场计算和 tracing；关闭时用于直接复用已有中间结果。"},
+    {"key": "sharp_feature_thr", "label": u"锐边阈值", "type": "double", "decimals": 4, "minimum": -99999.0, "maximum": 99999.0, "section": u"预处理与场", "help": u"仅对 quadwild 生效。控制识别 sharp feature 的角度阈值，值越小越容易把边当作特征边。"},
+    {"key": "alpha", "label": u"Alpha", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0, "section": u"共享量化目标", "help": u"共享参数。平衡几何等距与拓扑规则性；越小越偏规则网格，越大越偏保形。"},
+    {"key": "scaleFact", "label": u"Scale Factor", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0, "section": u"共享量化目标", "help": u"共享参数。控制目标边长尺度，直接影响量化后的边数分配与最终网格密度。"},
+    {"key": "fixedChartClusters", "label": u"Fixed Chart Clusters", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"共享量化目标", "help": u"共享参数。固定 chart 聚类数量；0 表示不强制固定。"},
+    {"key": "ilpMethod", "label": u"ILP 方法", "type": "combo", "choices": [(0, u"ABS"), (1, u"Least Squares")], "section": u"求解器", "help": u"共享参数。选择量化优化目标形式；ABS 更稳，Least Squares 往往更平滑。"},
+    {"key": "timeLimit", "label": u"Time Limit", "type": "double", "decimals": 3, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"共享参数。主求解器时间上限，单位秒。"},
+    {"key": "gapLimit", "label": u"Gap Limit", "type": "double", "decimals": 9, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"共享参数。达到该 gap 后提早停止优化；越小通常质量越好但更慢。"},
+    {"key": "minimumGap", "label": u"Minimum Gap", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"共享参数。若主优化未达到该最低 gap，后续会尝试更激进的求解步骤。"},
+    {"key": "callbackTimeLimit", "label": u"Callback Time Limit", "type": "float_list", "section": u"求解器", "help": u"共享参数。阶段性回调时间阈值列表，使用逗号分隔秒数，例如 3, 10, 30。"},
+    {"key": "callbackGapLimit", "label": u"Callback Gap Limit", "type": "float_list", "section": u"求解器", "help": u"共享参数。阶段性回调 gap 阈值列表，和 Callback Time Limit 配合使用。"},
+    {"key": "isometry", "label": u"Isometry", "type": "bool", "section": u"共享量化目标", "help": u"共享参数。是否启用等距项；通常建议开启。"},
+    {"key": "regularityQuadrilaterals", "label": u"Quadrilateral Regularity", "type": "bool", "section": u"共享量化目标", "help": u"共享参数。是否对四边形规则性加入约束。"},
+    {"key": "regularityNonQuadrilaterals", "label": u"Non-Quad Regularity", "type": "bool", "section": u"共享量化目标", "help": u"共享参数。是否惩罚非四边形的不规则结构。"},
+    {"key": "regularityNonQuadrilateralsWeight", "label": u"Non-Quad Regularity Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"共享量化目标", "help": u"共享参数。非四边形规则性权重，越大越强烈地压制异常 valence。"},
+    {"key": "alignSingularities", "label": u"Align Singularities", "type": "bool", "section": u"共享量化目标", "help": u"共享参数。是否对奇异点方向对齐施加目标。"},
+    {"key": "alignSingularitiesWeight", "label": u"Align Singularities Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"共享量化目标", "help": u"共享参数。奇异点对齐项的权重。"},
+    {"key": "repeatLosingConstraintsIterations", "label": u"Repeat Losing Iterations", "type": "bool", "section": u"约束策略", "help": u"共享参数。允许在多轮优化中重复放宽失败约束。"},
+    {"key": "repeatLosingConstraintsQuads", "label": u"Repeat Losing Quads", "type": "bool", "section": u"约束策略", "help": u"共享参数。是否对四边形相关失败约束重复尝试。"},
+    {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool", "section": u"约束策略", "help": u"共享参数。是否对非四边形相关失败约束重复尝试。"},
+    {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool", "section": u"约束策略", "help": u"共享参数。是否对对齐类失败约束重复尝试。"},
+    {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool", "section": u"约束策略", "help": u"共享参数。启用更严格的 parity 约束；可能提高一致性，但也可能增大求解难度。"},
+    {"key": "chartSmoothingIterations", "label": u"Chart Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。chart 层面的平滑次数。"},
+    {"key": "quadrangulationFixedSmoothingIterations", "label": u"Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。边界固定时的 quadrangulation 平滑次数。"},
+    {"key": "quadrangulationNonFixedSmoothingIterations", "label": u"Non-Fixed Smoothing Iterations", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。边界可动时的 quadrangulation 平滑次数。"},
+    {"key": "feasibilityFix", "label": u"Feasibility Fix", "type": "bool", "section": u"仅 QuadWild 后处理", "help": u"仅对 quadwild 生效。尝试修复量化可行性问题。"},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"共享参数。启用 Bi-MDF / flow 路线；通常为当前推荐路径。"},
+    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"共享参数。flow 求解器的额外 JSON 配置路径。留空则使用默认行为。"},
+    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"共享参数。Satsuma 求解器配置路径。仅在对应求解路径启用时生效。"},
 ]
 
 
 QFP_FORM_FIELDS = [
-    {"key": "alpha", "label": u"Alpha", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0},
-    {"key": "scaleFact", "label": u"Scale Factor", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0},
-    {"key": "fixedChartClusters", "label": u"Fixed Chart Clusters", "type": "int", "minimum": 0, "maximum": 1000000},
-    {"key": "ilpMethod", "label": u"ILP 方法", "type": "combo", "choices": [(0, u"ABS"), (1, u"Least Squares")]},
-    {"key": "timeLimit", "label": u"Time Limit", "type": "double", "decimals": 3, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "gapLimit", "label": u"Gap Limit", "type": "double", "decimals": 9, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "minimumGap", "label": u"Minimum Gap", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "callbackTimeLimit", "label": u"Callback Time Limit", "type": "float_list"},
-    {"key": "callbackGapLimit", "label": u"Callback Gap Limit", "type": "float_list"},
-    {"key": "isometry", "label": u"Isometry", "type": "bool"},
-    {"key": "regularityQuadrilaterals", "label": u"Quadrilateral Regularity", "type": "bool"},
-    {"key": "regularityNonQuadrilaterals", "label": u"Non-Quad Regularity", "type": "bool"},
-    {"key": "regularityNonQuadrilateralsWeight", "label": u"Non-Quad Regularity Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "alignSingularities", "label": u"Align Singularities", "type": "bool"},
-    {"key": "alignSingularitiesWeight", "label": u"Align Singularities Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0},
-    {"key": "repeatLosingConstraintsIterations", "label": u"Repeat Losing Iterations", "type": "bool"},
-    {"key": "repeatLosingConstraintsQuads", "label": u"Repeat Losing Quads", "type": "bool"},
-    {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool"},
-    {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool"},
-    {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool"},
-    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool"},
-    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file"},
-    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file"},
+    {"key": "alpha", "label": u"Alpha", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0, "section": u"共享量化目标", "help": u"仅供 quad_from_patches 阶段使用。平衡几何等距与拓扑规则性。"},
+    {"key": "scaleFact", "label": u"Scale Factor", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 99999.0, "section": u"共享量化目标", "help": u"控制目标边长和最终网格密度。"},
+    {"key": "fixedChartClusters", "label": u"Fixed Chart Clusters", "type": "int", "minimum": 0, "maximum": 1000000, "section": u"共享量化目标", "help": u"固定 chart 聚类数量；0 表示不固定。"},
+    {"key": "ilpMethod", "label": u"ILP 方法", "type": "combo", "choices": [(0, u"ABS"), (1, u"Least Squares")], "section": u"求解器", "help": u"选择量化求解目标形式。"},
+    {"key": "timeLimit", "label": u"Time Limit", "type": "double", "decimals": 3, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"主求解器时间上限，单位秒。"},
+    {"key": "gapLimit", "label": u"Gap Limit", "type": "double", "decimals": 9, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"达到该 gap 后提前结束优化。"},
+    {"key": "minimumGap", "label": u"Minimum Gap", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"求解器", "help": u"未达到该最低 gap 时，会继续尝试额外优化步骤。"},
+    {"key": "callbackTimeLimit", "label": u"Callback Time Limit", "type": "float_list", "section": u"求解器", "help": u"阶段性时间阈值列表，逗号分隔。"},
+    {"key": "callbackGapLimit", "label": u"Callback Gap Limit", "type": "float_list", "section": u"求解器", "help": u"阶段性 gap 阈值列表，逗号分隔。"},
+    {"key": "isometry", "label": u"Isometry", "type": "bool", "section": u"共享量化目标", "help": u"是否启用等距项。"},
+    {"key": "regularityQuadrilaterals", "label": u"Quadrilateral Regularity", "type": "bool", "section": u"共享量化目标", "help": u"是否约束四边形规则性。"},
+    {"key": "regularityNonQuadrilaterals", "label": u"Non-Quad Regularity", "type": "bool", "section": u"共享量化目标", "help": u"是否惩罚非四边形异常结构。"},
+    {"key": "regularityNonQuadrilateralsWeight", "label": u"Non-Quad Regularity Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"共享量化目标", "help": u"非四边形异常惩罚权重。"},
+    {"key": "alignSingularities", "label": u"Align Singularities", "type": "bool", "section": u"共享量化目标", "help": u"是否优化奇异点方向对齐。"},
+    {"key": "alignSingularitiesWeight", "label": u"Align Singularities Weight", "type": "double", "decimals": 6, "minimum": 0.0, "maximum": 999999.0, "section": u"共享量化目标", "help": u"奇异点对齐项的权重。"},
+    {"key": "repeatLosingConstraintsIterations", "label": u"Repeat Losing Iterations", "type": "bool", "section": u"约束策略", "help": u"允许重复放宽失败约束。"},
+    {"key": "repeatLosingConstraintsQuads", "label": u"Repeat Losing Quads", "type": "bool", "section": u"约束策略", "help": u"是否重复尝试四边形类失败约束。"},
+    {"key": "repeatLosingConstraintsNonQuads", "label": u"Repeat Losing Non-Quads", "type": "bool", "section": u"约束策略", "help": u"是否重复尝试非四边形类失败约束。"},
+    {"key": "repeatLosingConstraintsAlign", "label": u"Repeat Losing Align", "type": "bool", "section": u"约束策略", "help": u"是否重复尝试对齐类失败约束。"},
+    {"key": "hardParityConstraint", "label": u"Hard Parity Constraint", "type": "bool", "section": u"约束策略", "help": u"启用更严格的 parity 约束。"},
+    {"key": "useFlowSolver", "label": u"Use Flow Solver", "type": "bool", "section": u"外部求解器", "help": u"启用 Bi-MDF / flow 路径。"},
+    {"key": "flow_config_filename", "label": u"Flow Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"flow 求解器附加配置文件。"},
+    {"key": "satsuma_config_filename", "label": u"Satsuma Config JSON", "type": "path_file", "section": u"外部求解器", "help": u"Satsuma 求解器附加配置文件。"},
 ]
 
 
@@ -560,6 +560,7 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.workflow_combo.addItem(u"完整流程：quadwild -> quad_from_patches", "full_pipeline")
         self.workflow_combo.addItem(u"仅运行 quadwild", "quadwild_only")
         self.workflow_combo.addItem(u"仅运行 quad_from_patches", "quad_from_patches_only")
+        self.workflow_combo.setToolTip(u"选择本次运行执行到哪个阶段。完整流程会先运行 quadwild，再自动调用 quad_from_patches。")
 
         self.output_root_edit = QtWidgets.QLineEdit()
         self.output_root_button = QtWidgets.QPushButton(u"浏览...")
@@ -578,6 +579,8 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.quadwild_binary_button = QtWidgets.QPushButton(u"浏览...")
         self.qfp_binary_edit = QtWidgets.QLineEdit()
         self.qfp_binary_button = QtWidgets.QPushButton(u"浏览...")
+        self.quadwild_binary_edit.setToolTip(u"quadwild 可执行文件路径。若填写仓库内旧路径，UI 会自动解析到最新构建产物。")
+        self.qfp_binary_edit.setToolTip(u"quad_from_patches 可执行文件路径。若填写仓库内旧路径，UI 会自动解析到最新构建产物。")
         binary_form.addRow(u"quadwild.exe", self.browse_row(self.quadwild_binary_edit, self.quadwild_binary_button))
         binary_form.addRow(u"quad_from_patches.exe", self.browse_row(self.qfp_binary_edit, self.qfp_binary_button))
         layout.addWidget(binary_group)
@@ -586,6 +589,7 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         overview_form = QtWidgets.QFormLayout(overview_input_group)
         self.quadwild_input_general_edit = QtWidgets.QLineEdit()
         self.quadwild_input_general_button = QtWidgets.QPushButton(u"浏览...")
+        self.quadwild_input_general_edit.setToolTip(u"QuadWild 输入网格。总览页与 QuadWild 页的该字段保持实时同步。")
         overview_form.addRow(u"输入网格", self.browse_row(self.quadwild_input_general_edit, self.quadwild_input_general_button))
         layout.addWidget(overview_input_group)
         layout.addStretch(1)
@@ -603,6 +607,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         tab = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(tab)
 
+        summary = QtWidgets.QLabel(u"此页只展示 quadwild.exe 真正读取的参数。前两项用于 remesh / tracing，其余为 quadrangulation 配置。")
+        summary.setWordWrap(True)
+        layout.addWidget(summary)
+
         input_group = QtWidgets.QGroupBox(u"输入与执行参数")
         form = QtWidgets.QFormLayout(input_group)
         self.quadwild_input_edit = QtWidgets.QLineEdit()
@@ -616,6 +624,11 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.rosy_edit = QtWidgets.QLineEdit()
         self.rosy_button = QtWidgets.QPushButton(u"浏览...")
         self.quadwild_extra_args_edit = QtWidgets.QLineEdit()
+        self.quadwild_input_edit.setToolTip(u"quadwild 的输入网格路径。完整流程下会复制到任务目录后再执行。")
+        self.stop_step_combo.setToolTip(u"控制 quadwild 停在哪个阶段。完整流程会自动强制使用 2，以便把结果交给 quad_from_patches。")
+        self.sharp_edit.setToolTip(u"可选的现成 .sharp 文件。提供后会与输入网格一同复制到任务目录。")
+        self.rosy_edit.setToolTip(u"可选的现成 .rosy 文件。提供后会与输入网格一同复制到任务目录。")
+        self.quadwild_extra_args_edit.setToolTip(u"直接附加到 quadwild 命令行末尾的额外参数，按命令行方式填写。")
 
         form.addRow(u"输入网格", self.browse_row(self.quadwild_input_edit, self.quadwild_input_button))
         form.addRow(u"停止步骤", self.stop_step_combo)
@@ -645,6 +658,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         tab = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(tab)
 
+        summary = QtWidgets.QLabel(u"此页只展示 quad_from_patches.exe 真正读取的参数。它不读取 quadwild 的 remesh、sharp 阈值和 quadwild 专属 smoothing / feasibility 参数。")
+        summary.setWordWrap(True)
+        layout.addWidget(summary)
+
         input_group = QtWidgets.QGroupBox(u"输入与执行参数")
         form = QtWidgets.QFormLayout(input_group)
         self.qfp_input_edit = QtWidgets.QLineEdit()
@@ -656,6 +673,10 @@ class QuadWildWindow(QtWidgets.QMainWindow):
         self.stats_json_edit = QtWidgets.QLineEdit()
         self.stats_json_button = QtWidgets.QPushButton(u"浏览...")
         self.qfp_extra_args_edit = QtWidgets.QLineEdit()
+        self.qfp_input_edit.setToolTip(u"仅在“仅运行 quad_from_patches”时需要手动指定。完整流程下会自动接收 quadwild 的 *_rem_p0.obj。")
+        self.qfp_num_spin.setToolTip(u"传给 quad_from_patches 的 num 参数，用于区分输出文件名。")
+        self.stats_json_edit.setToolTip(u"可选的统计 JSON 输出路径。若填写相对路径，会写到任务目录下。")
+        self.qfp_extra_args_edit.setToolTip(u"直接附加到 quad_from_patches 命令行末尾的额外参数。")
 
         form.addRow(u"输入网格", self.browse_row(self.qfp_input_edit, self.qfp_input_button))
         form.addRow(u"自动说明", self.qfp_auto_label)
@@ -723,14 +744,27 @@ class QuadWildWindow(QtWidgets.QMainWindow):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         form_container = QtWidgets.QWidget()
-        form_layout = QtWidgets.QFormLayout(form_container)
-        form_layout.setFieldGrowthPolicy(QtWidgets.QFormLayout.AllNonFixedFieldsGrow)
+        form_layout = QtWidgets.QVBoxLayout(form_container)
 
         widget_map = {}
+        section_forms = {}
         for spec in field_specs:
             widget = self.create_config_field_widget(kind, spec)
+            self.apply_field_help(widget, spec)
             widget_map[spec["key"]] = widget
-            form_layout.addRow(spec["label"], widget if spec["type"] != "bool" else self.wrap_checkbox(widget))
+            section_name = spec.get("section", u"未分组")
+            if section_name not in section_forms:
+                section_group = QtWidgets.QGroupBox(section_name)
+                section_form = QtWidgets.QFormLayout(section_group)
+                section_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.AllNonFixedFieldsGrow)
+                form_layout.addWidget(section_group)
+                section_forms[section_name] = section_form
+            label_widget = QtWidgets.QLabel(spec["label"])
+            if spec.get("help"):
+                label_widget.setToolTip(spec["help"])
+            section_forms[section_name].addRow(label_widget, widget if spec["type"] != "bool" else self.wrap_checkbox(widget))
+
+        form_layout.addStretch(1)
 
         if kind == "quadwild":
             self.quadwild_form_widgets = widget_map
@@ -789,22 +823,36 @@ class QuadWildWindow(QtWidgets.QMainWindow):
 
         if field_type == "float_list":
             widget = QtWidgets.QLineEdit()
-            widget.setPlaceholderText(u"例如: 3.0, 5.0, 10.0")
+            widget.setPlaceholderText(spec.get("placeholder", u"例如: 3.0, 5.0, 10.0"))
             widget.textChanged.connect(self.on_config_changed)
             return widget
 
         if field_type == "path_file":
             edit = QtWidgets.QLineEdit()
+            edit.setPlaceholderText(spec.get("placeholder", u"选择一个 JSON 文件"))
             button = QtWidgets.QPushButton(u"浏览...")
             button.clicked.connect(lambda: self.choose_file(edit, u"选择 JSON 文件", u"JSON Files (*.json);;All Files (*)"))
             edit.textChanged.connect(self.on_config_changed)
             container = self.browse_row(edit, button)
             container._line_edit = edit  # noqa
+            container._browse_button = button  # noqa
             return container
 
         widget = QtWidgets.QLineEdit()
+        if spec.get("placeholder"):
+            widget.setPlaceholderText(spec["placeholder"])
         widget.textChanged.connect(self.on_config_changed)
         return widget
+
+    def apply_field_help(self, widget, spec):
+        help_text = ensure_text(spec.get("help", u"")).strip()
+        if not help_text:
+            return
+        widget.setToolTip(help_text)
+        if hasattr(widget, "_line_edit"):
+            widget._line_edit.setToolTip(help_text)
+        if hasattr(widget, "_browse_button"):
+            widget._browse_button.setToolTip(help_text)
 
     def browse_row(self, edit_widget, button_widget):
         layout = QtWidgets.QHBoxLayout()

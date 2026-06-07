@@ -32,6 +32,8 @@
 | `tracing_invalid_map_key_fix` | Tracing 阶段 invalid map key 异常隔离修复 | Done | M4 - 收尾 | `json_bool_parser_fix` | [tracing_invalid_map_key_fix_plan.md](./tracing_invalid_map_key_fix_plan.md) | [tracing_invalid_map_key_fix_done_plan.md](./tracing_invalid_map_key_fix_done_plan.md) |
 | `qfp_smoothing_progress_log_fix` | quad_from_patches smoothing 日志误导修复 | Done | M4 - 收尾 | `json_bool_parser_fix` | [qfp_smoothing_progress_log_fix_plan.md](./qfp_smoothing_progress_log_fix_plan.md) | [qfp_smoothing_progress_log_fix_done_plan.md](./qfp_smoothing_progress_log_fix_done_plan.md) |
 | `submodule_edit_constraint` | 禁止修改 submodule 约束落地 | Done | M4 - 收尾 | `tracing_invalid_map_key_fix` | [submodule_edit_constraint_plan.md](./submodule_edit_constraint_plan.md) | [submodule_edit_constraint_done_plan.md](./submodule_edit_constraint_done_plan.md) |
+| `track_build_windows_release_bat` | 将 Build_Windows_Release.bat 纳入 Git 跟踪 | Done | M4 - 收尾 | `windows_build_bat_setup` | [track_build_windows_release_bat_plan.md](./track_build_windows_release_bat_plan.md) | [track_build_windows_release_bat_done_plan.md](./track_build_windows_release_bat_done_plan.md) |
+| `ui_parameter_separation_and_help` | UI 参数拆分与字段提示完善 | Done | M4 - 收尾 | `ui_json_form_parameterization`, `json_bool_parser_fix` | [ui_parameter_separation_and_help_plan.md](./ui_parameter_separation_and_help_plan.md) | [ui_parameter_separation_and_help_done_plan.md](./ui_parameter_separation_and_help_done_plan.md) |
 
 ## 依赖说明
 新任务在开始实质执行前必须先登记到该表。如果任务依赖其他任务，必须在这里和任务计划文件中同时记录。
