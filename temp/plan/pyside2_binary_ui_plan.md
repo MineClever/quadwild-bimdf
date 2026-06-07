@@ -2,8 +2,8 @@
 
 Task ID: `pyside2_binary_ui`
 Task Name: `PySide2 二进制图形界面`
-Overall Status: In Progress
-Current Phase: `M1 - 设计`
+Overall Status: Done
+Current Phase: `M4 - 收尾`
 
 ## 目标
 为已构建的 `quadwild.exe` 与 `quad_from_patches.exe` 提供一个可运行的 PySide2 图形界面，用于选择输入文件、配置参数、设置输出目录并启动处理流程。
@@ -42,5 +42,5 @@ Current Phase: `M1 - 设计`
 - `windows_build_bat_setup`
 
 ## 后续动作
-- 实现带后台线程执行、日志回传和输出目录工作区复制逻辑的 UI。
-- 增加启动脚本，方便直接打开界面。
+- 如果后续需要发布给非开发机，可再增加 Python 环境检测与依赖安装提示。
+- 如果需要更细粒度参数控制，可继续把配置文件字段拆成表单控件，而不是只传现有 `.txt`。
