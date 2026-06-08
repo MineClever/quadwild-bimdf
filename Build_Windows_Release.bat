@@ -124,6 +124,12 @@ exit /b 0
 
 :find_vs_cmake
 set "CMAKE_EXE="
+call :probe_vs_cmake_powershell
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_uninstall_cmake "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_uninstall_cmake "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+if defined CMAKE_EXE exit /b 0
 call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\17.0\Setup\rdbgwiz"
 if defined CMAKE_EXE exit /b 0
 call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\16.9\Setup\rdbgwiz"
@@ -153,6 +159,27 @@ if defined CMAKE_EXE exit /b 0
 call :probe_vs_cmake_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7" "15.0"
 exit /b 0
 
+:probe_vs_cmake_powershell
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$roots = @('HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'); foreach ($root in $roots) { foreach ($key in Get-ChildItem -Path $root -ErrorAction SilentlyContinue) { $item = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue; if ($item.DisplayName -like 'Visual Studio*2022*' -and $item.InstallLocation) { $candidate = Join-Path $item.InstallLocation 'Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'; if (Test-Path $candidate) { Write-Output $candidate; break } } } }"`) do (
+    set "CMAKE_EXE=%%I"
+    goto :eof
+)
+
+exit /b 0
+
+:probe_vs_uninstall_cmake
+set "VS_UNINSTALL_ROOT_KEY=%~1"
+
+for /f "tokens=1,2,*" %%A in ('reg query "%VS_UNINSTALL_ROOT_KEY%" /s /f "Visual Studio 2022" 2^>nul') do (
+    if /I "%%A"=="InstallLocation" (
+        set "VS_INSTALL_ROOT=%%C"
+        call :check_vs_cmake_path
+        if defined CMAKE_EXE exit /b 0
+    )
+)
+
+exit /b 0
+
 :probe_vs_cmake_setup_key
 set "VS_SETUP_KEY=%~1"
 set "VS_SETUP_PATH="
@@ -169,10 +196,7 @@ set "VS_SETUP_PATH=%VS_SETUP_PATH:"=%"
 set "VS_INSTALL_ROOT=%VS_SETUP_PATH:\Common7\IDE\rdbgwiz.exe=%"
 
 if not "%VS_INSTALL_ROOT%"=="%VS_SETUP_PATH%" (
-    set "VS_CMAKE_DIR=%VS_INSTALL_ROOT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    if exist "%VS_CMAKE_DIR%\cmake.exe" (
-        set "CMAKE_EXE=%VS_CMAKE_DIR%\cmake.exe"
-    )
+    call :check_vs_cmake_path
 )
 
 exit /b 0
@@ -188,6 +212,13 @@ for /f "tokens=1,2,*" %%A in ('reg query "%VS_REG_KEY%" /v "%VS_REG_VALUE%" 2^>n
     )
 )
 
+if not defined VS_INSTALL_ROOT exit /b 0
+
+call :check_vs_cmake_path
+
+exit /b 0
+
+:check_vs_cmake_path
 if not defined VS_INSTALL_ROOT exit /b 0
 
 set "VS_CMAKE_DIR=%VS_INSTALL_ROOT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
