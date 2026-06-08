@@ -44,6 +44,7 @@
 | `tracing_failure_reassessment` | Tracing 失败回归复核 | Done | M4 - 收尾 | `submodule_edit_constraint`, `json_bool_parser_fix` | [tracing_failure_reassessment_plan.md](./tracing_failure_reassessment_plan.md) | [tracing_failure_reassessment_done_plan.md](./tracing_failure_reassessment_done_plan.md) |
 | `xfield_tracer_localization_and_fix` | xfield_tracer 本地化与 tracing 修复 | Done | M4 - 收尾 | `tracing_failure_reassessment`, `submodule_edit_constraint` | [xfield_tracer_localization_and_fix_plan.md](./xfield_tracer_localization_and_fix_plan.md) | [xfield_tracer_localization_and_fix_done_plan.md](./xfield_tracer_localization_and_fix_done_plan.md) |
 | `ui_viz_mesh_results_option` | UI 添加 viz_mesh_results 可选可视化导出 | Done | M4 - 收尾 | `pyside2_binary_ui`, `xfield_tracer_localization_and_fix` | [ui_viz_mesh_results_option_plan.md](./ui_viz_mesh_results_option_plan.md) | [ui_viz_mesh_results_option_done_plan.md](./ui_viz_mesh_results_option_done_plan.md) |
+| `smooth_openmp_phase2_implementation` | smooth OpenMP 第二阶段实现 | Done | M4 - 收尾 | `smooth_openmp_phase1_implementation`, `smooth_openmp_design_and_dependency_policy` | [smooth_openmp_phase2_implementation_plan.md](./smooth_openmp_phase2_implementation_plan.md) | [smooth_openmp_phase2_implementation_done_plan.md](./smooth_openmp_phase2_implementation_done_plan.md) |
 
 ## 依赖说明
 新任务在开始实质执行前必须先登记到该表。如果任务依赖其他任务，必须在这里和任务计划文件中同时记录。

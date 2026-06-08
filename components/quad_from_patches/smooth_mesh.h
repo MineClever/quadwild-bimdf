@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef SMOOTH_MESH_H
 #define SMOOTH_MESH_H
 
+#include <cstddef>
 #include <vector>
 #include <vcg/complex/algorithms/polygonal_algorithms.h>
 #include <wrap/io_trimesh/export.h>
@@ -37,8 +38,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #ifdef QUADWILD_OPENMP_SMOOTHING
 #define QUADWILD_OMP_PARALLEL_FOR _Pragma("omp parallel for schedule(static)")
+#define QUADWILD_OMP_FOR _Pragma("omp for schedule(static)")
 #else
 #define QUADWILD_OMP_PARALLEL_FOR
+#define QUADWILD_OMP_FOR
 #endif
 
 ///* ----- Triangle mesh ----- */
@@ -723,8 +726,8 @@ template <class PolyMeshType,class TriMeshType>
 void GetMovingPointOnSurface(PolyMeshType &PolyM,TriMeshType &poly_tris,
                              const typename TriMeshType::CoordType &TestPos,
                              vcg::GridStaticPtr<typename TriMeshType::FaceType,typename TriMeshType::ScalarType> &Poly_tri_Grid,
-                             std::vector<std::vector<typename TriMeshType::CoordType> > &VertMove,
-                             std::vector<std::vector<typename TriMeshType::ScalarType> > &VertWeight)
+                             std::vector<typename TriMeshType::CoordType> &VertMove,
+                             std::vector<typename TriMeshType::ScalarType> &VertWeight)
 {
     typedef typename PolyMeshType::ScalarType ScalarType;
     typedef typename PolyMeshType::CoordType CoordType;
@@ -737,7 +740,7 @@ void GetMovingPointOnSurface(PolyMeshType &PolyM,TriMeshType &poly_tris,
     ScalarType MaxD=PolyM.bbox.Diag();
     ScalarType MinD;
     TriFaceType *f=vcg::tri::GetClosestFaceBase(poly_tris,Poly_tri_Grid,TestPos,MaxD,MinD,closestPt);
-    //assert(f!=NULL);
+    if (f==NULL) return;
 
     //retrieve the original face
     int IndexTriF=vcg::tri::Index(poly_tris,f);
@@ -757,8 +760,9 @@ void GetMovingPointOnSurface(PolyMeshType &PolyM,TriMeshType &poly_tris,
     for (size_t j=0;j<4;j++)
     {
         int IndexV=vcg::tri::Index(PolyM,PolyM.face[IndexPolyF].V(j));
-        VertMove[IndexV].push_back(MoveVect*VertWeigths[j]);
-        VertWeight[IndexV].push_back(VertWeigths[j]);
+        ScalarType Weight=VertWeigths[j];
+        VertMove[IndexV]+=MoveVect*(Weight*Weight);
+        VertWeight[IndexV]+=Weight;
     }
 }
 
@@ -782,8 +786,8 @@ void BackProjectStepPositions(PolyMeshType &PolyM,TriMeshType &TriM,
     TriMeshType poly_tris;
     InitPolyTrisMesh(PolyM,poly_tris);
 
-    std::vector<std::vector<CoordType> > VertMove(PolyM.vert.size());
-    std::vector<std::vector<ScalarType> > VertWeight(PolyM.vert.size());
+    std::vector<CoordType> VertMove(PolyM.vert.size(),CoordType(0,0,0));
+    std::vector<ScalarType> VertWeight(PolyM.vert.size(),0);
     int t1=clock();
     //first set the internal
     //then initialize the grid
@@ -792,6 +796,30 @@ void BackProjectStepPositions(PolyMeshType &PolyM,TriMeshType &TriM,
     BB.Offset(BB.Diag()*0.1);
     TriGrid.Set(poly_tris.face.begin(),poly_tris.face.end(),BB);
     int t2=clock();
+    #ifdef QUADWILD_OPENMP_SMOOTHING
+    #pragma omp parallel
+    {
+        std::vector<CoordType> LocalVertMove(PolyM.vert.size(),CoordType(0,0,0));
+        std::vector<ScalarType> LocalVertWeight(PolyM.vert.size(),0);
+        QUADWILD_OMP_FOR
+        for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(TriM.vert.size());i++)
+        {
+            if (TriProjBase.VertProjType[i]!=ProjSuface)continue;
+
+            CoordType TestPos=TriM.vert[i].P();
+            GetMovingPointOnSurface(PolyM,poly_tris,TestPos,TriGrid,LocalVertMove,LocalVertWeight);
+        }
+
+        #pragma omp critical
+        {
+            for (size_t i=0;i<VertWeight.size();i++)
+            {
+                VertMove[i]+=LocalVertMove[i];
+                VertWeight[i]+=LocalVertWeight[i];
+            }
+        }
+    }
+    #else
     for (size_t i=0;i<TriM.vert.size();i++)
     {
         if (TriProjBase.VertProjType[i]!=ProjSuface)continue;
@@ -799,34 +827,26 @@ void BackProjectStepPositions(PolyMeshType &PolyM,TriMeshType &TriM,
         CoordType TestPos=TriM.vert[i].P();
         GetMovingPointOnSurface(PolyM,poly_tris,TestPos,TriGrid,VertMove,VertWeight);
     }
+    #endif
     int t3=clock();
     //normalize the weight and average the direction
     std::vector<CoordType> TargetMov(PolyM.vert.size(),CoordType(0,0,0));
-    for (size_t i=0;i<VertWeight.size();i++)
+    QUADWILD_OMP_PARALLEL_FOR
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(VertWeight.size());i++)
     {
-        ScalarType SumW=0;
-        for (size_t j=0;j<VertWeight[i].size();j++)
-            SumW+=VertWeight[i][j];
-
-        if (SumW==0)continue;
-
-        for (size_t j=0;j<VertWeight[i].size();j++)
-            VertWeight[i][j]/=SumW;
-
-        for (size_t j=0;j<VertMove[i].size();j++)
-        {
-            TargetMov[i]+=VertMove[i][j]*VertWeight[i][j];
-        }
+        if (VertWeight[i]==0)continue;
+        TargetMov[i]=VertMove[i]/VertWeight[i];
     }
 
-    TargetPos.clear();
-    for (size_t i=0;i<PolyM.vert.size();i++)
+    TargetPos.resize(PolyM.vert.size());
+    QUADWILD_OMP_PARALLEL_FOR
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
     {
         if ((PolyProjBase.VertProjType[i]==ProjCorner)||
                 (PolyProjBase.VertProjType[i]==ProjNone))
-            TargetPos.push_back(PolyM.vert[i].P());
+            TargetPos[i]=PolyM.vert[i].P();
         else
-            TargetPos.push_back(PolyM.vert[i].P()+TargetMov[i]);
+            TargetPos[i]=PolyM.vert[i].P()+TargetMov[i];
     }
     int t4=clock();
     //    std::cout<<"BProj T0: "<<t1-t0<<std::endl;
@@ -857,7 +877,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
 
     //set value
     QUADWILD_OMP_PARALLEL_FOR
-    for (size_t i=0;i<PolyM.vert.size();i++)
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
     {
         if (PolyProjBase.VertProjType[i]!=ProjSharp)continue;
         if (BlockedV[i])continue;
@@ -866,7 +886,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
 
 
     QUADWILD_OMP_PARALLEL_FOR
-    for (size_t i=0;i<PolyM.vert.size();i++)
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
     {
         if (PolyProjBase.VertProjType[i]!=ProjSharp)continue;
         if (BlockedV[i])continue;
@@ -924,7 +944,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
     //    int t1=clock();
     //smooth
     QUADWILD_OMP_PARALLEL_FOR
-    for (size_t i=0;i<PolyM.vert.size();i++)
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
     {
         if (BlockedV[i])continue;
         if (PolyProjBase.VertProjType[i]==ProjSuface)
@@ -937,7 +957,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
     {
         BackProjectStepPositions(PolyM,TriM,TriProjBase,PolyProjBase,TargetPosBackProj);
         QUADWILD_OMP_PARALLEL_FOR
-        for (size_t i=0;i<PolyM.vert.size();i++)
+        for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
         {
             if (BlockedV[i])continue;
             if (PolyProjBase.VertProjType[i]==ProjSuface)
@@ -947,7 +967,7 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
 
     //    int t3=clock();
     QUADWILD_OMP_PARALLEL_FOR
-    for (size_t i=0;i<PolyM.vert.size();i++)
+    for (ptrdiff_t i=0;i<static_cast<ptrdiff_t>(PolyM.vert.size());i++)
     {
         if (BlockedV[i])continue;
         if (PolyProjBase.VertProjType[i]==ProjSuface)
