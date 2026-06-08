@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 
 set "ROOT_DIR=%~dp0"
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
@@ -10,11 +10,13 @@ set "BUILD_CLANG=%BUILD_ROOT%\windows-clangcl"
 set "BUILD_DEFAULT=%BUILD_ROOT%\windows-default"
 set "RELEASE_DIR=%ROOT_DIR%\release\windows"
 set "BUILD_DIR="
-set "CMAKE_EXE=cmake"
-set "VS_CMAKE=H:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+set "CMAKE_EXE="
 
-if exist "%VS_CMAKE%" (
-    set "CMAKE_EXE=%VS_CMAKE%"
+call :find_vs_cmake
+if defined CMAKE_EXE (
+    echo [INFO] Visual Studio CMake detected: %CMAKE_EXE%
+) else (
+    set "CMAKE_EXE=cmake"
 )
 
 if /I "%CMAKE_EXE%"=="cmake" (
@@ -116,6 +118,81 @@ if exist "%BIN_DIR%\cli_trace.exe" (
 if exist "%BIN_DIR%\viz_mesh_results.exe" (
     "%CMAKE_EXE%" -E copy "%BIN_DIR%\viz_mesh_results.exe" "%RELEASE_DIR%\viz_mesh_results.exe"
     if errorlevel 1 exit /b 1
+)
+
+exit /b 0
+
+:find_vs_cmake
+set "CMAKE_EXE="
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\17.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\16.9\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\16.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\Microsoft\VisualStudio\15.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\17.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\16.9\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\16.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_setup_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\15.0\Setup\rdbgwiz"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\Microsoft\VisualStudio\SxS\VS7" "17.0"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\Microsoft\VisualStudio\SxS\VS7" "16.0"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\Microsoft\VisualStudio\SxS\VS7" "15.0"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7" "17.0"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7" "16.0"
+if defined CMAKE_EXE exit /b 0
+call :probe_vs_cmake_key "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7" "15.0"
+exit /b 0
+
+:probe_vs_cmake_setup_key
+set "VS_SETUP_KEY=%~1"
+set "VS_SETUP_PATH="
+
+for /f "tokens=1,2,*" %%A in ('reg query "%VS_SETUP_KEY%" /ve 2^>nul') do (
+    if /I "%%A"=="(Default)" (
+        set "VS_SETUP_PATH=%%C"
+    )
+)
+
+if not defined VS_SETUP_PATH exit /b 0
+
+set "VS_SETUP_PATH=%VS_SETUP_PATH:"=%"
+set "VS_INSTALL_ROOT=%VS_SETUP_PATH:\Common7\IDE\rdbgwiz.exe=%"
+
+if not "%VS_INSTALL_ROOT%"=="%VS_SETUP_PATH%" (
+    set "VS_CMAKE_DIR=%VS_INSTALL_ROOT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    if exist "%VS_CMAKE_DIR%\cmake.exe" (
+        set "CMAKE_EXE=%VS_CMAKE_DIR%\cmake.exe"
+    )
+)
+
+exit /b 0
+
+:probe_vs_cmake_key
+set "VS_REG_KEY=%~1"
+set "VS_REG_VALUE=%~2"
+set "VS_INSTALL_ROOT="
+
+for /f "tokens=1,2,*" %%A in ('reg query "%VS_REG_KEY%" /v "%VS_REG_VALUE%" 2^>nul') do (
+    if /I "%%A"=="%VS_REG_VALUE%" (
+        set "VS_INSTALL_ROOT=%%C"
+    )
+)
+
+if not defined VS_INSTALL_ROOT exit /b 0
+
+set "VS_CMAKE_DIR=%VS_INSTALL_ROOT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+if exist "%VS_CMAKE_DIR%\cmake.exe" (
+    set "CMAKE_EXE=%VS_CMAKE_DIR%\cmake.exe"
 )
 
 exit /b 0
