@@ -1,0 +1,11 @@
+Reading input...
+READ CONFIG FILE
+Successful config import
+Loading:D:\_Code_Here\Git\quadwild-bimdf\ui_runs\full_S_OBJ_20260608_201840\S.OBJ
+Loaded 77108 faces and 38553 vertices
+
+--------------------- 1 - Remesh and field ---------------------
+There is 4.41718 sharp lenght
+EndPoints 4
+KScale 0.195705
+Before Remeshing - faces: 77108 quality: 0.135417

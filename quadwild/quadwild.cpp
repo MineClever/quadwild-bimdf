@@ -75,7 +75,12 @@ int actual_main(int argc, char* argv[])
         std::cerr << "invalid mesh filename '" << meshFilename << "'" << std::endl;
         return 1;
     }
-    auto meshFilenamePrefix = std::string(meshFilename.begin(), meshFilename.end() - 4);
+    auto extensionPosition = meshFilename.find_last_of('.');
+    if (extensionPosition == std::string::npos) {
+        std::cerr << "invalid mesh filename '" << meshFilename << "'" << std::endl;
+        return 1;
+    }
+    auto meshFilenamePrefix = meshFilename.substr(0, extensionPosition);
 
     int stopAfterStep = 3;
     if (argc >= 2) {
@@ -142,8 +147,8 @@ int actual_main(int argc, char* argv[])
 
     if (!loaded)
     {
-        std::cout<<"Wrong mesh filename"<<std::endl;
-        exit(0);
+        std::cerr<<"Wrong mesh filename: "<<meshFilename<<std::endl;
+        return 1;
     }
 
     std::cout<<"Loaded "<<trimesh.fn<<" faces and "<<trimesh.vn<<" vertices"<<std::endl;

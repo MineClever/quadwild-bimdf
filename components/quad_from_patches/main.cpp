@@ -220,8 +220,8 @@ int actual_main(int argc, char *argv[])
 
     if ((err!=0)&&(err!=5))
     {
-        std::cout<<"Error loading mesh from file " << meshFilename <<std::endl;
-        exit(0);
+        std::cerr<<"Error loading mesh from file " << meshFilename <<std::endl;
+        return 1;
     }
     std::cout<<"MESH NAME "<<meshFilename.c_str()<<std::endl;
     std::cout<<"Loaded "<<trimesh.vert.size()<<" vertices"<<std::endl;

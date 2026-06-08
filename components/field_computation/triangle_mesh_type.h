@@ -38,6 +38,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 #include <wrap/io_trimesh/export_field.h>
 #include <wrap/io_trimesh/import_field.h>
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <fstream>
 #include <vcg/complex/algorithms/attribute_seam.h>
@@ -185,9 +187,13 @@ public:
         allQuad=false;
         Clear();
         if(filename.empty()) return false;
-        int position0=filename.find(".ply");
-        int position1=filename.find(".obj");
-        int position2=filename.find(".off");
+        std::string normalizedFilename = filename;
+        std::transform(normalizedFilename.begin(), normalizedFilename.end(), normalizedFilename.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        int position0=normalizedFilename.find(".ply");
+        int position1=normalizedFilename.find(".obj");
+        int position2=normalizedFilename.find(".off");
 
         if (position0!=-1)
         {
